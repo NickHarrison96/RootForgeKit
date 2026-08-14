@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" width="240" height="200">
+  <!-- Retro Microsoft Windows flag: four panes with perspective skew and a
+       trailing pixel-dissolve, matching the classic 3.x/95 mark. -->
+  <title>Microsoft Windows</title>
+  <g>
+    <!-- Trailing dissolve columns (fade the flag out to the left) -->
+    <g>
+      <rect x="6"   y="70"  width="11" height="13" transform="skewY(-13)" fill="#E8792B" opacity="0.55"/>
+      <rect x="6"   y="96"  width="11" height="13" transform="skewY(-13)" fill="#E8792B" opacity="0.35"/>
+      <rect x="24"  y="60"  width="13" height="15" transform="skewY(-13)" fill="#E8792B" opacity="0.75"/>
+      <rect x="24"  y="88"  width="13" height="15" transform="skewY(-13)" fill="#E8792B" opacity="0.5"/>
+      <rect x="6"   y="128" width="11" height="13" transform="skewY(-13)" fill="#4E8FD0" opacity="0.45"/>
+      <rect x="24"  y="126" width="13" height="15" transform="skewY(-13)" fill="#4E8FD0" opacity="0.65"/>
+      <rect x="24"  y="154" width="13" height="15" transform="skewY(-13)" fill="#4E8FD0" opacity="0.4"/>
+      <rect x="46"  y="52"  width="15" height="17" transform="skewY(-13)" fill="#E8792B" opacity="0.9"/>
+      <rect x="46"  y="82"  width="15" height="17" transform="skewY(-13)" fill="#E8792B" opacity="0.7"/>
+      <rect x="46"  y="120" width="15" height="17" transform="skewY(-13)" fill="#4E8FD0" opacity="0.8"/>
+      <rect x="46"  y="150" width="15" height="17" transform="skewY(-13)" fill="#4E8FD0" opacity="0.55"/>
+    </g>
+
+    <!-- Solid flag body: red/orange, green, blue, yellow quadrants -->
+    <g>
+      <!-- upper-left (orange) -->
+      <path d="M74 46 L146 30 L146 96 L74 106 Z" fill="#E8792B"/>
+      <!-- upper-right (green) -->
+      <path d="M156 28 L232 12 L232 82 L156 94 Z" fill="#77B85B"/>
+      <!-- lower-left (blue) -->
+      <path d="M74 116 L146 106 L146 174 L74 186 Z" fill="#4E8FD0"/>
+      <!-- lower-right (yellow) -->
+      <path d="M156 104 L232 92 L232 164 L156 178 Z" fill="#F2C230"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,82 @@
+# =============================================================================
+# NicksFix — .gitignore
+# =============================================================================
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- IDE / editor ----
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---- OS cruft ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Claude Code local state (machine-specific; not team config) ----
+.claude/settings.local.json
+
+# ---- Downloaded / auto-fetched binaries (re-fetched by Prerequisites tab) ----
+bin/platform-tools/
+
+# ---- Runtime-generated device output (real backups, screenshots, PII) ----
+# Acquisitions pull real user data off a device. The Browse button allows any
+# output path, so these patterns are unanchored on purpose — they catch stray
+# acquisition output anywhere in the tree, not just the default location.
+/backups/
+backups/
+**/DCIM/
+**/itunes_backup/
+**/crash_reports/
+**/apps_inventory.json
+logical_*/
+logical_plus_*/
+prfs_*/
+ffs_*/
+*.tar
+temp_shot.png
+*.ips
+*.crash
+
+# Device media formats — never belongs in the repo
+*.heic
+*.HEIC
+*.mov
+*.MOV
+*.jpg
+*.jpeg
+*.JPG
+*.png
+*.mp4
+
+# Exception: project artwork IS tracked (logos are SVG, but keep this explicit
+# in case raster assets are added later).
+!resources/logos/**
+
+# ---- Auth server: entire directory excluded from the public repo, not just
+# secrets — deploy scripts, VM host details, and infra layout don't belong
+# in a public NicksFix checkout either.
+server/
+
+# ---- Internal project tracker (full history, machine/account specifics) ----
+# The public-facing summary lives in README.md and IS committed.
+RevLog.md
+
+# ---- Local env / secrets ----
+.env
+.env.*
+*.local.json

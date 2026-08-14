@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="200" height="240">
+  <!-- Tux, simplified. Swap this file for the official Larry Ewing artwork
+       if a higher-fidelity mark is wanted (attribution required). -->
+  <title>Linux</title>
+
+  <!-- feet -->
+  <ellipse cx="66"  cy="206" rx="30" ry="15" fill="#F5B71C" transform="rotate(-16 66 206)"/>
+  <ellipse cx="134" cy="206" rx="30" ry="15" fill="#F5B71C" transform="rotate(16 134 206)"/>
+
+  <!-- body -->
+  <path d="M100 24c-24 0-41 19-41 45 0 13 3 21 3 32 0 14-14 28-14 51 0 30 23 46 52 46s52-16 52-46c0-23-14-37-14-51 0-11 3-19 3-32 0-26-17-45-41-45z" fill="#0B0B0B"/>
+
+  <!-- belly -->
+  <path d="M100 96c-19 0-33 20-33 50 0 28 15 44 33 44s33-16 33-44c0-30-14-50-33-50z" fill="#FFFFFF"/>
+
+  <!-- eyes -->
+  <ellipse cx="86"  cy="62" rx="11" ry="14" fill="#FFFFFF"/>
+  <ellipse cx="114" cy="62" rx="11" ry="14" fill="#FFFFFF"/>
+  <ellipse cx="88"  cy="64" rx="5"  ry="7"  fill="#0B0B0B"/>
+  <ellipse cx="112" cy="64" rx="5"  ry="7"  fill="#0B0B0B"/>
+
+  <!-- beak -->
+  <path d="M100 72c-10 0-17 6-17 12s7 10 17 10 17-4 17-10-7-12-17-12z" fill="#F5B71C"/>
+  <path d="M100 82c-7 0-12 2-14 5 3 3 8 5 14 5s11-2 14-5c-2-3-7-5-14-5z" fill="#E09E12"/>
+
+  <!-- flippers -->
+  <path d="M62 118c-9 6-13 20-11 34 2 12 7 20 12 19 4-1 5-9 3-20-2-13-2-25-4-33z" fill="#0B0B0B"/>
+  <path d="M138 118c9 6 13 20 11 34-2 12-7 20-12 19-4-1-5-9-3-20 2-13 2-25 4-33z" fill="#0B0B0B"/>
+</svg>

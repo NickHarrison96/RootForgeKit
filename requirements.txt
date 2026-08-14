@@ -1,0 +1,4 @@
+psutil
+requests
+pymobiledevice3
+keyring

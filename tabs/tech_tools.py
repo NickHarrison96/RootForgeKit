@@ -1,0 +1,311 @@
+# =============================================================================
+# NicksFix — Technician Tools Tab (Auth-Gated)
+# Advanced system utilities locked behind Technician authentication.
+# OS selector (Windows / macOS / Linux) reveals that platform's tool set.
+# =============================================================================
+
+import platform
+
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
+    QPushButton, QGridLayout, QScrollArea, QSplitter, QSizePolicy,
+    QStackedWidget, QButtonGroup,
+)
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
+
+from components.terminal_widget import TerminalConsoleWidget
+from utils.command_builder import CommandBuilder
+from utils.batch_installer import BatchPackageInstaller
+from utils.os_logo import get_host_profile
+
+
+# ---- Tool definitions: (command_key, icon, name, description) ----
+TECH_TOOLS = [
+    ("disk_health",   "💽", "Disk Health Check",     "Query SMART status and health of all connected drives."),
+    ("network_diag",  "🌐", "Network Diagnostics",   "Display full network configuration and listening ports."),
+    ("flush_dns",     "🔄", "Flush DNS Cache",       "Clear the DNS resolver cache to fix name resolution issues."),
+    ("sfc_scan",      "🛡️", "System File Checker",   "Scan and repair protected system files (elevated)."),
+    ("process_list",  "📊", "Process Monitor",       "List running processes sorted by CPU usage."),
+    ("gpu_info",      "🎮", "GPU Details",           "Query detailed GPU adapter information."),
+    ("temp_clean",    "🧹", "Temp File Cleaner",     "Remove temporary files to reclaim disk space."),
+    ("system_update", "⬆️", "System Update",         "Upgrade all installed packages."),
+    ("dotnet",        "🧩", ".NET Runtime",          "Install the .NET 8 runtime."),
+]
+
+# ---- OS selector: (platform_key, icon, label) ----
+OS_TARGETS = [
+    ("Windows", "🪟", "Windows"),
+    ("Darwin",  "🍎", "macOS"),
+    ("Linux",   "🐧", "Linux"),
+]
+
+TOOL_GRID_COLUMNS = 4
+TOOL_BTN_W = 210
+TOOL_BTN_H = 28
+
+
+class TechToolsTab(QWidget):
+    """
+    Technician-level system utilities with auth gating.
+    Shows a locked overlay for Guest users; unlocks tool cards for Technicians.
+    """
+
+    def __init__(self, role: str = "guest", tier: str = "free", display_role: str = "", parent=None):
+        super().__init__(parent)
+        self.role = role
+        self.tier = tier
+        self.display_role = display_role
+        self.host = get_host_profile()
+        self.host_os = self.host.family
+        self.cmd_builder = CommandBuilder()
+        self._builders: dict[str, CommandBuilder] = {}
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """Build the technician tools layout."""
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(12, 10, 12, 10)
+        main_layout.setSpacing(0)
+
+        # Title
+        title = QLabel("🔧  Technician Tools")
+        title.setObjectName("TabSectionTitle")
+        title.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
+        main_layout.addWidget(title)
+
+        subtitle = QLabel("Advanced system diagnostics and repair utilities.")
+        subtitle.setObjectName("TabSubtitle")
+        subtitle.setFont(QFont("Segoe UI", 9))
+        main_layout.addWidget(subtitle)
+        main_layout.addSpacing(10)
+
+        # ---- Auth Gate ----
+        if self.role != "technician":
+            self._build_locked_overlay(main_layout)
+            return
+
+        # ---- Unlocked: OS selector + Tool Grid + Terminal ----
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(10)
+
+        top_pane = QWidget()
+        top_layout = QVBoxLayout(top_pane)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(8)
+        top_layout.addLayout(self._build_os_selector())
+
+        # Secondary area — one page of tools per OS
+        self.os_pages = QStackedWidget()
+        for os_key, _, _ in OS_TARGETS:
+            self.os_pages.addWidget(self._build_os_page(os_key))
+        top_layout.addWidget(self.os_pages, stretch=1)
+        splitter.addWidget(top_pane)
+
+        # Terminal console
+        terminal_frame = QFrame()
+        terminal_frame.setObjectName("TechTerminalFrame")
+        terminal_layout = QVBoxLayout(terminal_frame)
+        terminal_layout.setContentsMargins(0, 6, 0, 0)
+        terminal_layout.setSpacing(4)
+
+        terminal_label = QLabel("📟  Diagnostic Console")
+        terminal_label.setObjectName("TerminalSectionLabel")
+        terminal_label.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+        terminal_layout.addWidget(terminal_label)
+
+        self.terminal = TerminalConsoleWidget()
+        terminal_layout.addWidget(self.terminal)
+
+        splitter.addWidget(terminal_frame)
+        splitter.setSizes([340, 280])
+        main_layout.addWidget(splitter, stretch=1)
+
+        # Default to the host platform
+        self._select_os(self.host_os if any(k == self.host_os for k, _, _ in OS_TARGETS) else "Windows")
+
+    def _build_os_selector(self) -> QHBoxLayout:
+        """Build the Windows / macOS / Linux selector row."""
+        row = QHBoxLayout()
+        row.setSpacing(6)
+
+        self.os_group = QButtonGroup(self)
+        self.os_group.setExclusive(True)
+        self.os_buttons: dict[str, QPushButton] = {}
+
+        for os_key, icon, label in OS_TARGETS:
+            btn = QPushButton(f"{icon}  {label}")
+            btn.setObjectName("OsSelectBtn")
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            if os_key == self.host_os:
+                btn.setToolTip(f"{label} — this machine")
+            else:
+                btn.setToolTip(f"{label} — commands shown for reference; run on a {label} host")
+            btn.clicked.connect(lambda _checked, k=os_key: self._select_os(k))
+            self.os_group.addButton(btn)
+            self.os_buttons[os_key] = btn
+            row.addWidget(btn)
+
+        row.addStretch()
+        return row
+
+    def _build_os_page(self, os_key: str) -> QWidget:
+        """Build the secondary tool area for one platform."""
+        builder = CommandBuilder(os_type=os_key)
+        self._builders[os_key] = builder
+
+        page = QWidget()
+        page_layout = QVBoxLayout(page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.setSpacing(6)
+
+        if os_key != self.host_os:
+            notice = QLabel(
+                f"⚠️  Viewing {dict((k, l) for k, _, l in OS_TARGETS)[os_key]} commands "
+                f"on a {self.host_os} host — these will not run correctly here."
+            )
+            notice.setObjectName("OsMismatchNotice")
+            notice.setWordWrap(True)
+            page_layout.addWidget(notice)
+
+        scroll = QScrollArea()
+        scroll.setObjectName("TechScrollArea")
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        grid_container = QWidget()
+        grid_layout = QGridLayout(grid_container)
+        grid_layout.setContentsMargins(0, 0, 6, 0)
+        grid_layout.setSpacing(6)
+
+        idx = 0
+        for cmd_key, icon, name, desc in TECH_TOOLS:
+            if cmd_key not in builder.list_keys():
+                continue
+            _, builder_desc, risk = builder.get(cmd_key)
+            btn = self._create_tool_button(os_key, cmd_key, icon, name, builder_desc or desc, risk)
+            grid_layout.addWidget(btn, idx // TOOL_GRID_COLUMNS, idx % TOOL_GRID_COLUMNS,
+                                  Qt.AlignmentFlag.AlignLeft)
+            idx += 1
+
+        # Batch profile entry (host-only — installer targets the running machine)
+        if os_key == self.host_os:
+            batch_btn = self._create_raw_tool_button(
+                "🛠️", "Install Tech Utilities Profile",
+                "Batch silent install of 7-Zip, Notepad++, Wireshark, VS Code, Git, Python 3.12.",
+                self._run_tech_batch_profile,
+            )
+            grid_layout.addWidget(batch_btn, idx // TOOL_GRID_COLUMNS, idx % TOOL_GRID_COLUMNS,
+                                  Qt.AlignmentFlag.AlignLeft)
+            idx += 1
+
+        # Trailing spacer column absorbs the slack so buttons stay left-packed
+        grid_layout.setColumnStretch(TOOL_GRID_COLUMNS, 1)
+        grid_layout.setRowStretch(grid_layout.rowCount(), 1)
+
+        scroll.setWidget(grid_container)
+        page_layout.addWidget(scroll, stretch=1)
+        return page
+
+    def _select_os(self, os_key: str):
+        """Switch the secondary area to the chosen platform."""
+        index = next((i for i, (k, _, _) in enumerate(OS_TARGETS) if k == os_key), 0)
+        self.os_pages.setCurrentIndex(index)
+        btn = self.os_buttons.get(os_key)
+        if btn:
+            btn.setChecked(True)
+
+    def _build_locked_overlay(self, layout: QVBoxLayout):
+        """Show a locked message for unauthorized users."""
+        lock_frame = QFrame()
+        lock_frame.setObjectName("LockedOverlay")
+        lock_layout = QVBoxLayout(lock_frame)
+        lock_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lock_layout.setSpacing(12)
+
+        lock_icon = QLabel("🔒")
+        lock_icon.setFont(QFont("Segoe UI Emoji", 40))
+        lock_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lock_layout.addWidget(lock_icon)
+
+        lock_text = QLabel("Technician Authentication Required")
+        lock_text.setObjectName("LockedTitle")
+        lock_text.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
+        lock_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lock_layout.addWidget(lock_text)
+
+        lock_desc = QLabel(
+            "These advanced tools require Technician-level access.\n"
+            "Please sign in with valid credentials to unlock."
+        )
+        lock_desc.setObjectName("LockedDesc")
+        lock_desc.setFont(QFont("Segoe UI", 9))
+        lock_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lock_desc.setWordWrap(True)
+        lock_layout.addWidget(lock_desc)
+
+        layout.addWidget(lock_frame, stretch=1)
+
+    def _create_tool_button(self, os_key: str, cmd_key: str, icon: str,
+                            name: str, desc: str, risk: str) -> QPushButton:
+        """
+        Create a compact tool button wired to the command registry.
+
+        TODO(tiers): every tool here is Free-accessible today — no per-tool
+        tier requirement has been assigned yet (pending which specific tools
+        should be Paid/Diamond-only). When that's decided, gate individual
+        buttons with `has_tier_access(self.display_role, self.tier, minimum)`
+        from utils.tiers — disable + lock icon rather than hiding, so Free
+        users can see what upgrading unlocks.
+        """
+        risk_marks = {"low": "", "medium": " ·", "high": " !"}
+        btn = QPushButton(f"{icon}  {name}{risk_marks.get(risk, '')}")
+        btn.setObjectName("ToolItemBtn")
+        btn.setProperty("risk", risk)
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setFixedSize(TOOL_BTN_W, TOOL_BTN_H)
+        btn.setToolTip(f"{desc}\n\nRisk: {risk.upper()}")
+        btn.clicked.connect(lambda _checked, k=cmd_key, o=os_key: self._execute_tool(k, o))
+        return btn
+
+    def _create_raw_tool_button(self, icon: str, name: str, desc: str, slot) -> QPushButton:
+        """Create a compact tool button wired to an arbitrary callable."""
+        btn = QPushButton(f"{icon}  {name}")
+        btn.setObjectName("ToolItemBtn")
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setFixedSize(TOOL_BTN_W, TOOL_BTN_H)
+        btn.setToolTip(desc)
+        btn.clicked.connect(slot)
+        return btn
+
+    def _execute_tool(self, cmd_key: str, os_key: str):
+        """Look up and execute a tool command via the terminal."""
+        builder = self._builders.get(os_key, self.cmd_builder)
+        try:
+            command, description, risk_level = builder.get(cmd_key)
+        except KeyError:
+            return
+
+        if not self.host.supports(os_key):
+            self.terminal.console.appendPlainText(
+                f"[BLOCKED] {self.host.block_reason(os_key)}\n"
+                f"          Command shown for reference: {command}\n"
+            )
+            return
+
+        self.terminal.execute_command(
+            command=command,
+            description=description,
+            risk_level=risk_level,
+            command_key=cmd_key,
+        )
+
+    def _run_tech_batch_profile(self):
+        """Run batch installation of tech_utilities profile."""
+        def log_to_terminal(msg):
+            self.terminal.console.appendPlainText(msg)
+
+        installer = BatchPackageInstaller(log_callback=log_to_terminal)
+        installer.install_profile("tech_utilities")
