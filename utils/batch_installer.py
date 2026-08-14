@@ -4,6 +4,9 @@
 # =============================================================================
 
 import platform
+
+from PyQt6.QtCore import QThread, pyqtSignal
+
 from utils.resource_manager import safe_run_command
 
 PRESET_PROFILES = {
@@ -102,3 +105,27 @@ class BatchPackageInstaller:
 
         self.log(f"\n[+] Batch Installation Complete: {success_count}/{len(packages)} succeeded.")
         return success_count == len(packages)
+
+
+class BatchInstallWorker(QThread):
+    """
+    Runs BatchPackageInstaller.install_profile() off the UI thread.
+
+    Each package install can legitimately take minutes (first-time downloads
+    of VS Code, Wireshark, etc.), and a profile chains several of them —
+    calling install_profile() directly from a button's clicked handler blocks
+    the whole Qt event loop for the entire run, freezing the app. log_line
+    carries terminal output back to the UI thread instead of the installer
+    touching a widget directly from a worker thread, which Qt doesn't allow.
+    """
+    log_line = pyqtSignal(str)
+    finished_profile = pyqtSignal(bool)
+
+    def __init__(self, profile_key: str, parent=None):
+        super().__init__(parent)
+        self.profile_key = profile_key
+
+    def run(self):
+        installer = BatchPackageInstaller(log_callback=self.log_line.emit)
+        success = installer.install_profile(self.profile_key)
+        self.finished_profile.emit(success)

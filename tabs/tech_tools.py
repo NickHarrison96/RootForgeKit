@@ -16,7 +16,7 @@ from PyQt6.QtGui import QFont
 
 from components.terminal_widget import TerminalConsoleWidget
 from utils.command_builder import CommandBuilder
-from utils.batch_installer import BatchPackageInstaller
+from utils.batch_installer import BatchInstallWorker
 from utils.os_logo import get_host_profile
 
 
@@ -161,10 +161,19 @@ class TechToolsTab(QWidget):
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(6)
 
-        if os_key != self.host_os:
+        os_label = dict((k, l) for k, _, l in OS_TARGETS)[os_key]
+        if not builder.list_keys():
             notice = QLabel(
-                f"⚠️  Viewing {dict((k, l) for k, _, l in OS_TARGETS)[os_key]} commands "
-                f"on a {self.host_os} host — these will not run correctly here."
+                f"🚧  {os_label} support isn't built yet — Windows is the only verified "
+                f"baseline for now."
+            )
+            notice.setObjectName("OsMismatchNotice")
+            notice.setWordWrap(True)
+            page_layout.addWidget(notice)
+        elif os_key != self.host_os:
+            notice = QLabel(
+                f"⚠️  Viewing {os_label} commands on a {self.host_os} host — these will "
+                f"not run correctly here."
             )
             notice.setObjectName("OsMismatchNotice")
             notice.setWordWrap(True)
@@ -192,12 +201,12 @@ class TechToolsTab(QWidget):
 
         # Batch profile entry (host-only — installer targets the running machine)
         if os_key == self.host_os:
-            batch_btn = self._create_raw_tool_button(
+            self._tech_batch_btn = self._create_raw_tool_button(
                 "🛠️", "Install Tech Utilities Profile",
                 "Batch silent install of 7-Zip, Notepad++, Wireshark, VS Code, Git, Python 3.12.",
                 self._run_tech_batch_profile,
             )
-            grid_layout.addWidget(batch_btn, idx // TOOL_GRID_COLUMNS, idx % TOOL_GRID_COLUMNS,
+            grid_layout.addWidget(self._tech_batch_btn, idx // TOOL_GRID_COLUMNS, idx % TOOL_GRID_COLUMNS,
                                   Qt.AlignmentFlag.AlignLeft)
             idx += 1
 
@@ -303,9 +312,20 @@ class TechToolsTab(QWidget):
         )
 
     def _run_tech_batch_profile(self):
-        """Run batch installation of tech_utilities profile."""
-        def log_to_terminal(msg):
-            self.terminal.console.appendPlainText(msg)
+        """
+        Run batch installation of the tech_utilities profile in the
+        background — this used to call install_profile() directly on the UI
+        thread, which froze the whole app for the entire multi-package run.
+        """
+        if getattr(self, "_batch_worker", None) is not None and self._batch_worker.isRunning():
+            return
+        self._tech_batch_btn.setEnabled(False)
+        self._tech_batch_btn.setText("🛠️  Installing…")
+        self._batch_worker = BatchInstallWorker("tech_utilities")
+        self._batch_worker.log_line.connect(self.terminal.console.appendPlainText)
+        self._batch_worker.finished_profile.connect(self._on_tech_batch_finished)
+        self._batch_worker.start()
 
-        installer = BatchPackageInstaller(log_callback=log_to_terminal)
-        installer.install_profile("tech_utilities")
+    def _on_tech_batch_finished(self, success: bool):
+        self._tech_batch_btn.setEnabled(True)
+        self._tech_batch_btn.setText("🛠️  Install Tech Utilities Profile")

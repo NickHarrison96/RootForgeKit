@@ -4,7 +4,31 @@
 # Supports: winget/DISM (Windows), brew (macOS), apt (Linux).
 # =============================================================================
 
+import base64
 import platform
+
+
+def ps_encoded_command(script: str) -> str:
+    """
+    Build a `powershell -EncodedCommand <base64>` invocation string.
+
+    Plain `powershell -Command "..."` breaks once the whole command string
+    gets wrapped *again* by `cmd.exe /c "..."` -- which is how every tool
+    command actually gets run (see components/terminal_widget.py's
+    _run_command). The nested double quotes around -Command's argument
+    collide with cmd.exe's own quote-stripping for /c: confirmed via a
+    direct QProcess reproduction that several commands were returning exit
+    code 0 while the "output" was just the literal command text echoed back
+    -- PowerShell never actually ran it. Base64-encoding sidesteps quoting
+    entirely; there's nothing left for cmd.exe to misinterpret.
+
+    $ProgressPreference is silenced because some cmdlets (e.g.
+    Get-CimInstance) emit progress-stream records that get serialized as
+    CLIXML noise mixed into stdout when run non-interactively like this.
+    """
+    full_script = f"$ProgressPreference = 'SilentlyContinue'; {script}"
+    encoded = base64.b64encode(full_script.encode("utf-16-le")).decode("ascii")
+    return f"powershell -NoProfile -EncodedCommand {encoded}"
 
 
 class CommandBuilder:
@@ -102,140 +126,28 @@ class CommandBuilder:
                     "low",
                 ),
                 # ---- Process List ----
+                # Was `tasklist /v /fo csv | findstr /i "cpu"` -- findstr
+                # matched zero lines against tasklist's actual CSV output,
+                # so this always exited 1 with no output at all. Confirmed
+                # via direct reproduction, replaced with a real working
+                # PowerShell equivalent.
                 "process_list": (
-                    "tasklist /v /fo csv | findstr /i \"cpu\"",
-                    "List running processes with verbose detail",
-                    "low",
-                ),
-            }
-
-        elif self.os_type == "Darwin":
-            return {
-                "wsl2": (
-                    "echo 'WSL2 is a Windows-only feature. Not applicable on macOS.'",
-                    "WSL2 is not available on macOS",
-                    "low",
-                ),
-                "vcredist": (
-                    "echo 'Visual C++ Redistributable is a Windows-only component.'",
-                    "VC++ Redist is not applicable on macOS",
-                    "low",
-                ),
-                "dotnet": (
-                    "brew install --cask dotnet-sdk",
-                    "Install .NET SDK via Homebrew",
-                    "medium",
-                ),
-                "system_update": (
-                    "brew update && brew upgrade",
-                    "Update and upgrade all Homebrew packages",
-                    "medium",
-                ),
-                "directx": (
-                    "echo 'DirectX is a Windows-only technology.'",
-                    "DirectX is not available on macOS",
-                    "low",
-                ),
-                "disk_health": (
-                    "diskutil list && diskutil info /",
-                    "List disks and show root volume info",
-                    "low",
-                ),
-                "network_diag": (
-                    "ifconfig && netstat -an | grep LISTEN",
-                    "Display network interfaces and listening ports",
-                    "low",
-                ),
-                "flush_dns": (
-                    "sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder",
-                    "Flush macOS DNS cache",
-                    "medium",
-                ),
-                "temp_clean": (
-                    "rm -rf ~/Library/Caches/* /tmp/* 2>/dev/null; echo 'Cache cleanup complete.'",
-                    "Clear user and system cache files",
-                    "medium",
-                ),
-                "sfc_scan": (
-                    "echo 'SFC is a Windows-only tool. Use Disk Utility on macOS.'",
-                    "System File Checker is not available on macOS",
-                    "low",
-                ),
-                "gpu_info": (
-                    "system_profiler SPDisplaysDataType",
-                    "Display GPU/Display adapter information",
-                    "low",
-                ),
-                "process_list": (
-                    "ps aux --sort=-%cpu | head -20",
+                    ps_encoded_command(
+                        "Get-Process | Sort-Object CPU -Descending | "
+                        "Select-Object -First 20 Name,Id,CPU,WorkingSet | Format-Table -AutoSize"
+                    ),
                     "List top 20 CPU-consuming processes",
                     "low",
                 ),
             }
 
-        else:  # Linux
-            return {
-                "wsl2": (
-                    "echo 'WSL2 is a Windows-only feature. Not applicable on Linux.'",
-                    "WSL2 is not available on Linux",
-                    "low",
-                ),
-                "vcredist": (
-                    "echo 'Visual C++ Redistributable is a Windows-only component.'",
-                    "VC++ Redist is not applicable on Linux",
-                    "low",
-                ),
-                "dotnet": (
-                    "sudo apt-get update && sudo apt-get install -y dotnet-runtime-8.0",
-                    "Install .NET 8 Runtime via apt",
-                    "medium",
-                ),
-                "system_update": (
-                    "sudo apt-get update && sudo apt-get upgrade -y",
-                    "Update package lists and upgrade all packages",
-                    "medium",
-                ),
-                "directx": (
-                    "echo 'DirectX is a Windows-only technology. Consider Vulkan/Mesa on Linux.'",
-                    "DirectX is not available on Linux",
-                    "low",
-                ),
-                "disk_health": (
-                    "lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT && sudo smartctl -a /dev/sda 2>/dev/null || echo 'smartctl not available'",
-                    "List block devices and check SMART health",
-                    "low",
-                ),
-                "network_diag": (
-                    "ip addr && ss -tulnp",
-                    "Display network interfaces and listening sockets",
-                    "low",
-                ),
-                "flush_dns": (
-                    "sudo systemd-resolve --flush-caches 2>/dev/null || sudo resolvectl flush-caches 2>/dev/null; echo 'DNS cache flushed.'",
-                    "Flush systemd-resolved DNS cache",
-                    "low",
-                ),
-                "temp_clean": (
-                    "sudo rm -rf /tmp/* /var/tmp/* 2>/dev/null; echo 'Temp directories cleaned.'",
-                    "Clear temporary file directories",
-                    "medium",
-                ),
-                "sfc_scan": (
-                    "sudo apt-get install -f && sudo dpkg --configure -a",
-                    "Repair broken packages and reconfigure dpkg",
-                    "high",
-                ),
-                "gpu_info": (
-                    "lspci | grep -iE 'vga|3d|display'",
-                    "List PCI GPU/display devices",
-                    "low",
-                ),
-                "process_list": (
-                    "ps aux --sort=-%cpu | head -20",
-                    "List top 20 CPU-consuming processes",
-                    "low",
-                ),
-            }
+        # macOS and Linux registries were previously filled with guessed
+        # command equivalents that were never actually run or tested on
+        # either platform (all testing happened on Windows — see README
+        # "Project status"). Rather than ship untested guesses as if they
+        # were verified tools, start these empty and build them out for
+        # real, one tool at a time, once there's a way to test them.
+        return {}
 
     def get(self, key: str) -> tuple[str, str, str]:
         """

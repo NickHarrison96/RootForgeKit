@@ -15,8 +15,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
 from components.terminal_widget import TerminalConsoleWidget
-from utils.command_builder import CommandBuilder
-from utils.batch_installer import BatchPackageInstaller
+from utils.command_builder import CommandBuilder, ps_encoded_command
+from utils.batch_installer import BatchInstallWorker
 from utils.os_logo import get_host_profile
 
 
@@ -31,70 +31,52 @@ GAMER_TOOLS = [
 ]
 
 # Platform-specific bonus tools: (command, icon, name, description, risk)
+# Darwin/Linux intentionally omitted — they previously held guessed commands
+# that were never run or tested on either platform. PLATFORM_BONUS.get(os_key,
+# []) already falls back to empty for any key not listed here, so leaving
+# them out (rather than "Darwin": []) is the same effect with less noise.
+# Build these out for real, one tool at a time, once there's a way to test
+# them — Windows is the only verified baseline for now.
+#
+# All four Windows entries below were `powershell -Command "..."` originally,
+# which silently didn't work: the whole command string gets wrapped again by
+# cmd.exe /c "..." (see components/terminal_widget.py), and the nested double
+# quotes around -Command's argument collided with cmd.exe's own quote
+# handling for /c. Confirmed via a direct QProcess reproduction that every
+# one of these returned exit code 0 while the "output" was just the literal
+# command text echoed back — never actually executed. Rewrapped through
+# ps_encoded_command() (base64 -EncodedCommand), which sidesteps the quoting
+# collision entirely.
 PLATFORM_BONUS = {
     "Windows": [
         (
-            "powershell -Command \"Get-Process | Sort-Object CPU -Descending | Select-Object -First 15 Name,CPU,WorkingSet\"",
+            ps_encoded_command(
+                "Get-Process | Sort-Object CPU -Descending | "
+                "Select-Object -First 15 Name,CPU,WorkingSet"
+            ),
             "🎯", "Top Processes (Detailed)",
             "Show top 15 CPU-consuming processes with memory usage.",
             "low",
         ),
         (
-            "powershell -Command \"Get-NetAdapterAdvancedProperty | Format-Table -AutoSize\"",
+            ps_encoded_command("Get-NetAdapterAdvancedProperty | Format-Table -AutoSize"),
             "📡", "Network Adapter Tweaks",
             "View advanced network adapter properties for latency tuning.",
             "low",
         ),
         (
-            "powershell -Command \"Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,DriverDate | Format-List\"",
+            ps_encoded_command(
+                "Get-CimInstance Win32_VideoController | "
+                "Select-Object Name,DriverVersion,DriverDate | Format-List"
+            ),
             "🖥️", "GPU Driver Info",
             "Check GPU driver version and date — outdated drivers hurt game performance.",
             "low",
         ),
         (
-            "powershell -Command \"powercfg /getactivescheme\"",
+            ps_encoded_command("powercfg /getactivescheme"),
             "🔋", "Active Power Plan",
             "Show the active power plan; High Performance is preferred for gaming.",
-            "low",
-        ),
-    ],
-    "Darwin": [
-        (
-            "top -l 1 -n 10 -stats pid,command,cpu,mem",
-            "🎯", "Top Processes",
-            "Show top 10 processes by CPU and memory usage.",
-            "low",
-        ),
-        (
-            "system_profiler SPDisplaysDataType",
-            "🖥️", "Display && GPU Info",
-            "Show detailed GPU and display adapter information.",
-            "low",
-        ),
-        (
-            "pmset -g",
-            "🔋", "Power Settings",
-            "Show current power management settings.",
-            "low",
-        ),
-    ],
-    "Linux": [
-        (
-            "top -b -n 1 | head -20",
-            "🎯", "Top Processes",
-            "Show system overview and top processes.",
-            "low",
-        ),
-        (
-            "glxinfo | grep -iE 'opengl renderer|opengl version' 2>/dev/null || echo 'glxinfo not installed (mesa-utils)'",
-            "🖥️", "OpenGL Renderer",
-            "Show the active OpenGL renderer and version.",
-            "low",
-        ),
-        (
-            "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo 'cpufreq not available'",
-            "🔋", "CPU Governor",
-            "Show the CPU scaling governor; 'performance' is preferred for gaming.",
             "low",
         ),
     ],
@@ -228,10 +210,18 @@ class GamerToolsTab(QWidget):
         page_layout.setContentsMargins(0, 0, 0, 0)
         page_layout.setSpacing(6)
 
-        if os_key != self.host_os:
-            label = dict((k, l) for k, _, l in OS_TARGETS)[os_key]
+        os_label = dict((k, l) for k, _, l in OS_TARGETS)[os_key]
+        if not builder.list_keys() and not PLATFORM_BONUS.get(os_key):
             notice = QLabel(
-                f"⚠️  Viewing {label} commands on a {self.host_os} host — "
+                f"🚧  {os_label} support isn't built yet — Windows is the only verified "
+                f"baseline for now."
+            )
+            notice.setObjectName("OsMismatchNotice")
+            notice.setWordWrap(True)
+            page_layout.addWidget(notice)
+        elif os_key != self.host_os:
+            notice = QLabel(
+                f"⚠️  Viewing {os_label} commands on a {self.host_os} host — "
                 f"these will not run correctly here."
             )
             notice.setObjectName("OsMismatchNotice")
@@ -268,12 +258,12 @@ class GamerToolsTab(QWidget):
 
         # Batch profile entry (host-only — installer targets the running machine)
         if os_key == self.host_os:
-            batch_btn = self._create_action_button(
+            self._gamer_batch_btn = self._create_action_button(
                 "🚀", "Install Gamer Essentials Profile",
                 "Batch silent install of Steam, Discord, DirectX, VC++ Runtimes, 7-Zip, MSI Afterburner.",
                 self._run_gaming_batch_profile,
             )
-            grid_layout.addWidget(batch_btn, idx // TOOL_GRID_COLUMNS, idx % TOOL_GRID_COLUMNS,
+            grid_layout.addWidget(self._gamer_batch_btn, idx // TOOL_GRID_COLUMNS, idx % TOOL_GRID_COLUMNS,
                                   Qt.AlignmentFlag.AlignLeft)
             idx += 1
 
@@ -410,9 +400,20 @@ class GamerToolsTab(QWidget):
         )
 
     def _run_gaming_batch_profile(self):
-        """Run batch installation of gaming_essentials profile."""
-        def log_to_terminal(msg):
-            self.terminal.console.appendPlainText(msg)
+        """
+        Run batch installation of the gaming_essentials profile in the
+        background — this used to call install_profile() directly on the UI
+        thread, which froze the whole app for the entire multi-package run.
+        """
+        if getattr(self, "_batch_worker", None) is not None and self._batch_worker.isRunning():
+            return
+        self._gamer_batch_btn.setEnabled(False)
+        self._gamer_batch_btn.setText("🚀  Installing…")
+        self._batch_worker = BatchInstallWorker("gaming_essentials")
+        self._batch_worker.log_line.connect(self.terminal.console.appendPlainText)
+        self._batch_worker.finished_profile.connect(self._on_gaming_batch_finished)
+        self._batch_worker.start()
 
-        installer = BatchPackageInstaller(log_callback=log_to_terminal)
-        installer.install_profile("gaming_essentials")
+    def _on_gaming_batch_finished(self, success: bool):
+        self._gamer_batch_btn.setEnabled(True)
+        self._gamer_batch_btn.setText("🚀  Install Gamer Essentials Profile")
