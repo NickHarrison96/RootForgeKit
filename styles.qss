@@ -351,30 +351,83 @@ QFrame {
 
 /* ---- Overview Left Panel ---- */
 QFrame#OverviewLeftPanel {
-    background-color: #161b22;
-    border: 1px solid #30363d;
+    background-color: #151c28;
+    border: 1px solid #2d3c52;
     border-radius: 10px;
 }
 
 /* OS identity block (Overview left panel) */
 QLabel#OsLogo          { background-color: transparent; }
-QLabel#OverviewHost    { background-color: transparent; }
-QLabel#OverviewPlatform{ background-color: transparent; }
+QLabel#OverviewHost    { background-color: transparent; color: #00f0ff; }
+QLabel#OverviewPlatform{ background-color: transparent; color: #d8e2ed; }
 
-/* ---- Spec Cards (right panel) ---- */
+/* ---- Spec Cards & Phone-Style Widgets (right panel) ---- */
 QFrame#SpecCard {
-    background-color: #1c2333;
-    border: 1px solid #30363d;
-    border-radius: 8px;
+    background-color: #1a2436;
+    border: 1px solid #2f3f58;
+    border-radius: 10px;
 }
 
 QFrame#SpecCard:hover {
-    border-color: #484f58;
-    background-color: #21283b;
+    border-color: #00f0ff;
+    background-color: #202c42;
 }
 
-QLabel#SpecCardTitle   { color: #e6edf3; }
-QLabel#SpecCardContent { color: #c9d1d9; }
+QFrame#SpecCard[dragTarget="true"] {
+    border: 2px dashed #00f0ff;
+    background-color: #1a3454;
+}
+
+QLabel#SpecCardTitle   { color: #ffffff; font-weight: bold; }
+QLabel#SpecCardContent { color: #ffffff; }
+
+QLabel#WidgetDragHandle {
+    color: #8fa4be;
+    font-size: 14px;
+    font-weight: bold;
+    padding-right: 2px;
+}
+
+QLabel#WidgetDragHandle:hover {
+    color: #00f0ff;
+}
+
+QPushButton#WidgetMiniBtn {
+    background-color: transparent;
+    border: none;
+    color: #8fa4be;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 0px 3px;
+}
+
+QPushButton#WidgetMiniBtn:hover {
+    background-color: transparent;
+    border: none;
+    color: #00f0ff;
+}
+
+QPushButton#WidgetMiniBtn:pressed {
+    background-color: transparent;
+    border: none;
+    color: #ffffff;
+}
+
+QPushButton#ResetLayoutBtn {
+    background-color: #233247;
+    border: 1px solid #3d506e;
+    border-radius: 6px;
+    color: #ffffff;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+QPushButton#ResetLayoutBtn:hover {
+    border-color: #00f0ff;
+    color: #0b1017;
+    background-color: #00f0ff;
+}
 
 /* ============================================================
    TERMINAL CONSOLE WIDGET
@@ -532,7 +585,16 @@ QPushButton#ToolItemBtn:pressed {
     border-color: #536dfe;
 }
 
-QPushButton#ToolItemBtn[risk="high"] { border-left: 3px solid #ff5252; }
+QPushButton#ToolItemBtn[risk="high"] {
+    border-left: 3px solid #ff5252;
+}
+
+QPushButton#ToolItemBtn[risk="high"]:hover {
+    background-color: rgba(255, 82, 82, 0.12);
+    border-color: #ff5252;
+    color: #ff5252;
+}
+
 QPushButton#ToolItemBtn[risk="medium"] { border-left: 3px solid #ffc107; }
 
 /* ---- OS selector (Windows / macOS / Linux) ---- */

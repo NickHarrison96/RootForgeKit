@@ -5,6 +5,7 @@
 # =============================================================================
 
 import platform
+import webbrowser
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
@@ -18,19 +19,35 @@ from components.terminal_widget import TerminalConsoleWidget
 from utils.command_builder import CommandBuilder
 from utils.batch_installer import BatchInstallWorker
 from utils.os_logo import get_host_profile
+from utils.hardware_vendor import detect_cpu_vendor, detect_gpu_vendor
+
+# No winget package exists for the actual AMD/NVIDIA driver (verified via
+# `winget search` — only third-party utilities like TinyNvidiaUpdateChecker
+# turn up, not the OEM installer). Intel does publish a real one-click
+# auto-detect tool, so only that path installs directly; AMD/NVIDIA route to
+# the vendor's own official driver page instead of faking an install.
+INTEL_DRIVER_ASSISTANT_CMD = (
+    "winget install --id Intel.IntelDriverAndSupportAssistant -e "
+    "--accept-package-agreements --accept-source-agreements"
+)
+AMD_DRIVER_URL = "https://www.amd.com/en/support"
+NVIDIA_DRIVER_URL = "https://www.nvidia.com/Download/index.aspx"
 
 
 # ---- Tool definitions: (command_key, icon, name, description) ----
 TECH_TOOLS = [
-    ("disk_health",   "💽", "Disk Health Check",     "Query SMART status and health of all connected drives."),
-    ("network_diag",  "🌐", "Network Diagnostics",   "Display full network configuration and listening ports."),
-    ("flush_dns",     "🔄", "Flush DNS Cache",       "Clear the DNS resolver cache to fix name resolution issues."),
-    ("sfc_scan",      "🛡️", "System File Checker",   "Scan and repair protected system files (elevated)."),
-    ("process_list",  "📊", "Process Monitor",       "List running processes sorted by CPU usage."),
-    ("gpu_info",      "🎮", "GPU Details",           "Query detailed GPU adapter information."),
-    ("temp_clean",    "🧹", "Temp File Cleaner",     "Remove temporary files to reclaim disk space."),
-    ("system_update", "⬆️", "System Update",         "Upgrade all installed packages."),
-    ("dotnet",        "🧩", ".NET Runtime",          "Install the .NET 8 runtime."),
+    ("disk_health",          "💽", "Disk Health Check",     "Query SMART status and health of all connected drives."),
+    ("network_diag",         "🌐", "Network Diagnostics",   "Display full network configuration and listening ports."),
+    ("flush_dns",            "🔄", "Flush DNS Cache",       "Clear the DNS resolver cache to fix name resolution issues."),
+    ("sfc_scan",             "🛡️", "System File Checker",   "Scan and repair protected system files (elevated)."),
+    ("process_list",         "📊", "Process Monitor",       "List running processes sorted by CPU usage."),
+    ("gpu_info",             "🎮", "GPU Details",           "Query detailed GPU adapter information."),
+    ("temp_clean",           "🧹", "Temp File Cleaner",     "Remove temporary files to reclaim disk space."),
+    ("system_update",        "⬆️", "System Update",         "Upgrade all installed packages."),
+    ("dotnet",               "🧩", ".NET Runtime",          "Install the .NET 8 runtime."),
+    ("activate_enterprise",  "🔑", "Activate Enterprise",   "Uninstall key, install Enterprise GVLK, set KMS server (kms8.msguides.com), and activate."),
+    ("activate_pro",         "🔑", "Activate Windows Pro",  "Uninstall key, install Pro GVLK, set KMS server (kms8.msguides.com), and activate."),
+    ("dism_server_standard", "💻", "DISM Server Standard",  "Set Windows Edition to ServerStandard via DISM with specified product key."),
 ]
 
 # ---- OS selector: (platform_key, icon, label) ----
@@ -210,6 +227,29 @@ class TechToolsTab(QWidget):
                                   Qt.AlignmentFlag.AlignLeft)
             idx += 1
 
+        # CPU chipset / GPU driver buttons (Windows-only, host-only — vendor
+        # detection reads this machine's actual hardware)
+        if os_key == self.host_os and os_key == "Windows":
+            cpu_vendor = detect_cpu_vendor()
+            cpu_btn = self._create_raw_tool_button(
+                "🧠", f"Install Chipset Drivers ({cpu_vendor})",
+                self._driver_button_tooltip("CPU", cpu_vendor),
+                self._run_cpu_driver_install,
+            )
+            grid_layout.addWidget(cpu_btn, idx // TOOL_GRID_COLUMNS, idx % TOOL_GRID_COLUMNS,
+                                  Qt.AlignmentFlag.AlignLeft)
+            idx += 1
+
+            gpu_vendor = detect_gpu_vendor()
+            gpu_btn = self._create_raw_tool_button(
+                "🖥️", f"Install GPU Drivers ({gpu_vendor})",
+                self._driver_button_tooltip("GPU", gpu_vendor),
+                self._run_gpu_driver_install,
+            )
+            grid_layout.addWidget(gpu_btn, idx // TOOL_GRID_COLUMNS, idx % TOOL_GRID_COLUMNS,
+                                  Qt.AlignmentFlag.AlignLeft)
+            idx += 1
+
         # Trailing spacer column absorbs the slack so buttons stay left-packed
         grid_layout.setColumnStretch(TOOL_GRID_COLUMNS, 1)
         grid_layout.setRowStretch(grid_layout.rowCount(), 1)
@@ -329,3 +369,54 @@ class TechToolsTab(QWidget):
     def _on_tech_batch_finished(self, success: bool):
         self._tech_batch_btn.setEnabled(True)
         self._tech_batch_btn.setText("🛠️  Install Tech Utilities Profile")
+
+    # -------------------------------------------------------------------------
+    # CPU / GPU driver buttons
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _driver_button_tooltip(kind: str, vendor: str) -> str:
+        if vendor == "Intel":
+            return f"Detected Intel {kind} — installs Intel's official Driver & Support Assistant (auto-detects and updates all Intel drivers)."
+        if vendor in ("AMD", "NVIDIA"):
+            return f"Detected {vendor} {kind} — opens {vendor}'s official driver page. No winget package exists for the real {vendor} driver, so this isn't a one-click install."
+        return f"Could not detect {kind} vendor — opens Intel's driver assistant as a fallback; check manually if this isn't an Intel system."
+
+    def _run_cpu_driver_install(self):
+        vendor = detect_cpu_vendor()
+        if vendor == "AMD":
+            self.terminal.console.appendPlainText(
+                f"[*] AMD chipset drivers have no winget package — opening {AMD_DRIVER_URL}"
+            )
+            webbrowser.open(AMD_DRIVER_URL)
+        else:
+            # Intel, or unknown (Intel's assistant is a safe default — it
+            # simply won't find anything to do on non-Intel hardware).
+            self.terminal.execute_command(
+                command=INTEL_DRIVER_ASSISTANT_CMD,
+                description="Install Intel Driver & Support Assistant (auto-detects chipset/GPU/WiFi drivers)",
+                risk_level="medium",
+                command_key="",
+            )
+
+    def _run_gpu_driver_install(self):
+        vendor = detect_gpu_vendor()
+        if vendor == "NVIDIA":
+            self.terminal.console.appendPlainText(
+                f"[*] No winget package for the real NVIDIA driver — opening {NVIDIA_DRIVER_URL}"
+            )
+            webbrowser.open(NVIDIA_DRIVER_URL)
+        elif vendor == "AMD":
+            self.terminal.console.appendPlainText(
+                f"[*] AMD GPU drivers have no winget package — opening {AMD_DRIVER_URL}"
+            )
+            webbrowser.open(AMD_DRIVER_URL)
+        else:
+            # Intel integrated graphics, or unknown — Intel's assistant
+            # covers Intel GPUs too.
+            self.terminal.execute_command(
+                command=INTEL_DRIVER_ASSISTANT_CMD,
+                description="Install Intel Driver & Support Assistant (auto-detects chipset/GPU/WiFi drivers)",
+                risk_level="medium",
+                command_key="",
+            )

@@ -139,6 +139,24 @@ class CommandBuilder:
                     "List top 20 CPU-consuming processes",
                     "low",
                 ),
+                # ---- Windows Enterprise Activation ----
+                "activate_enterprise": (
+                    "slmgr /upk && slmgr /ipk NPPR9-FWDCX-D2C8J-H872K-2YT43 && slmgr /skms kms8.msguides.com && slmgr /ato",
+                    "Activate Windows Enterprise via KMS server (kms8.msguides.com)",
+                    "high",
+                ),
+                # ---- Windows Pro Activation ----
+                "activate_pro": (
+                    "slmgr /upk && slmgr /ipk W269N-WFGWX-YVC9B-4J6C9-T83GX && slmgr /skms kms8.msguides.com && slmgr /ato",
+                    "Activate Windows Pro Edition via KMS server (kms8.msguides.com)",
+                    "high",
+                ),
+                # ---- DISM Server Standard Edition ----
+                "dism_server_standard": (
+                    "dism /online /Set-Edition:ServerStandard /ProductKey:W269N-WFGWX-YVC9B-4J6C9-T83GX /AcceptEula",
+                    "Set Windows edition to ServerStandard via DISM",
+                    "high",
+                ),
             }
 
         # macOS and Linux registries were previously filled with guessed
