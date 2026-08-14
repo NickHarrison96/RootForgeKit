@@ -1,0 +1,60 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Modify QSS styles to remove dark backgrounds and increase spacing": [
+      {
+        "executionId": "4bd4fc25-2ed2-4e4b-aa53-62e5bf39e001",
+        "chatSessionId": "sess_7a5c64db-cecc-42a7-95e5-2d5c2720359b",
+        "timestamp": 1786693435516
+      },
+      {
+        "executionId": "4bd4fc25-2ed2-4e4b-aa53-62e5bf39e001",
+        "chatSessionId": "sess_7a5c64db-cecc-42a7-95e5-2d5c2720359b",
+        "timestamp": 1786693443541
+      },
+      {
+        "executionId": "4bd4fc25-2ed2-4e4b-aa53-62e5bf39e001",
+        "chatSessionId": "sess_7a5c64db-cecc-42a7-95e5-2d5c2720359b",
+        "timestamp": 1786693842651
+      }
+    ],
+    "2.1 Perform manual visual inspection": [
+      {
+        "executionId": "4bd4fc25-2ed2-4e4b-aa53-62e5bf39e001",
+        "chatSessionId": "sess_7a5c64db-cecc-42a7-95e5-2d5c2720359b",
+        "timestamp": 1786693435850
+      },
+      {
+        "executionId": "4bd4fc25-2ed2-4e4b-aa53-62e5bf39e001",
+        "chatSessionId": "sess_7a5c64db-cecc-42a7-95e5-2d5c2720359b",
+        "timestamp": 1786693848420
+      }
+    ],
+    "2.2 Verify isolation (no unintended changes)": [
+      {
+        "executionId": "4bd4fc25-2ed2-4e4b-aa53-62e5bf39e001",
+        "chatSessionId": "sess_7a5c64db-cecc-42a7-95e5-2d5c2720359b",
+        "timestamp": 1786693435889
+      },
+      {
+        "executionId": "4bd4fc25-2ed2-4e4b-aa53-62e5bf39e001",
+        "chatSessionId": "sess_7a5c64db-cecc-42a7-95e5-2d5c2720359b",
+        "timestamp": 1786693849100
+      }
+    ],
+    "3. Checkpoint - Evaluate results": [
+      {
+        "executionId": "4bd4fc25-2ed2-4e4b-aa53-62e5bf39e001",
+        "chatSessionId": "sess_7a5c64db-cecc-42a7-95e5-2d5c2720359b",
+        "timestamp": 1786693436298
+      }
+    ],
+    "4. (Fallback) Adjust Python layout spacing if QSS changes are insufficient": [
+      {
+        "executionId": "4bd4fc25-2ed2-4e4b-aa53-62e5bf39e001",
+        "chatSessionId": "sess_7a5c64db-cecc-42a7-95e5-2d5c2720359b",
+        "timestamp": 1786693436356
+      }
+    ]
+  }
+}

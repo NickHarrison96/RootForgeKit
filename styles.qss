@@ -337,8 +337,18 @@ QLabel {
 
 QLabel#TabSectionTitle { color: #00e5ff; }
 QLabel#TabSubtitle     { color: #8b949e; }
-QLabel#InfoKey         { color: #00e5ff; }
-QLabel#InfoValue       { color: #c9d1d9; }
+
+QLabel#InfoKey {
+    color: #00e5ff;
+    background-color: transparent;
+    padding: 4px 0px;
+}
+
+QLabel#InfoValue {
+    color: #c9d1d9;
+    background-color: transparent;
+    padding: 4px 0px;
+}
 
 /* ============================================================
    FRAMES / CARDS

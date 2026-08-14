@@ -2,3 +2,4 @@ psutil
 requests
 pymobiledevice3
 keyring
+PyQt6
