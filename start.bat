@@ -81,9 +81,19 @@ call :try_python "py -3"
 if not defined PYTHON_CMD call :try_python "python"
 if not defined PYTHON_CMD call :try_python "python3"
 
+:: On a genuinely fresh machine (no Python at all) this is what makes the
+:: whole thing "just work" in one launch instead of sending the user to a
+:: browser: Windows 11 ships winget in-box, so use it to install Python
+:: silently and pick straight back up, rather than stopping here.
+if not defined PYTHON_CMD (
+    echo [i] No usable Python found on PATH.
+    call :try_auto_install_python
+)
+
 if not defined PYTHON_CMD (
     echo.
-    echo [ERROR] No working Python 3.10+ installation was found.
+    echo [ERROR] No working Python 3.10+ installation was found, and automatic
+    echo         setup could not install one.
     echo.
     echo   Install Python from:  https://www.python.org/downloads/
     echo   IMPORTANT: tick "Add python.exe to PATH" in the installer.
@@ -270,4 +280,58 @@ if errorlevel 1 (
 )
 echo      found !CANDIDATE_VER! - using this one.
 set "PYTHON_CMD=%~1"
+exit /b 0
+
+:: ============================================================
+:: :try_auto_install_python
+:: Fresh-machine bootstrap: no usable Python was found on PATH, so
+:: if winget is available (verified by actually running it, same
+:: rule as :try_python), silently install Python 3.12 -- pinned to
+:: 3.12 specifically because that is the exact version this app's
+:: dependencies are verified against, not just "whatever is
+:: newest". winget package ID and flags confirmed via `winget show
+:: Python.Python.3.12` / `winget install --help` -- not guessed.
+::
+:: A freshly installed Python updates the registry's PATH, but NOT
+:: this already-running process's copy of it -- installers can't
+:: reach into a live process's environment block. Re-reading PATH
+:: from HKLM+HKCU via .NET's GetEnvironmentVariable (which returns
+:: it already expanded, unlike a raw `reg query` on a REG_EXPAND_SZ
+:: value, which would hand back literal, unexpanded "%LOCALAPPDATA%"
+:: text) is what lets the *same* :try_python candidates find the
+:: interpreter that was just installed, with no separate "restart
+:: the terminal" step for the user.
+::
+:: Never sets PYTHON_CMD on failure -- the caller's existing
+:: manual-install error message is the fallback, unchanged. This is
+:: purely additive and cannot make a machine that already has
+:: Python behave any differently.
+:: ============================================================
+:try_auto_install_python
+winget --version >nul 2>&1
+if errorlevel 1 (
+    echo [i] winget is not available - cannot auto-install Python.
+    exit /b 1
+)
+for /f "tokens=*" %%v in ('winget --version 2^>^&1') do set "WINGET_VER=%%v"
+echo [*] winget !WINGET_VER! found - installing Python 3.12 automatically...
+echo     One-time setup on a fresh machine; may take a minute or two.
+winget install --id Python.Python.3.12 -e --silent --accept-package-agreements --accept-source-agreements
+if errorlevel 1 (
+    echo [i] Automatic Python install via winget did not succeed.
+    exit /b 1
+)
+echo [OK] Python 3.12 installed via winget.
+
+echo [*] Refreshing this session's PATH so the new install is visible...
+for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "[System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')"`) do set "PATH=%%p"
+
+call :try_python "py -3"
+if not defined PYTHON_CMD call :try_python "python"
+if not defined PYTHON_CMD call :try_python "python3"
+
+if not defined PYTHON_CMD (
+    echo [i] Python was installed but still cannot be found after a PATH refresh.
+    exit /b 1
+)
 exit /b 0
