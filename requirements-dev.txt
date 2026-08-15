@@ -1,0 +1,13 @@
+# =============================================================================
+# RootForgeKit — build/development tooling
+#
+#   pip install -r requirements-dev.txt
+#
+# Kept out of requirements.txt so testers running from source don't pull down
+# a build toolchain they will never invoke.
+# =============================================================================
+
+-r requirements.txt
+
+# Produces dist/RootForgeKit/ via RootForgeKit.spec.
+pyinstaller==6.22.0
