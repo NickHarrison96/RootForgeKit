@@ -7,8 +7,6 @@ By KushNick420.
 RootForgeKit bundles the tools a technician actually reaches for — hardware health, system
 repair, iOS and Android device work — into one dark-themed, 3uTools-inspired desktop app,
 instead of a drawer full of separate CLIs.
----
-<img width="1920" height="1040" alt="123" src="https://github.com/user-attachments/assets/f44b0d21-ce06-4e32-8eac-93cfd1391e5c" />
 
 ---
 
