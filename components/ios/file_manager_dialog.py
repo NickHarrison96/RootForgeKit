@@ -1,24 +1,24 @@
 # =============================================================================
-# NicksFix — iOS Files & Apps Manager Modal (PyQt6)
+# RootForgeKit — iOS Files & Apps Manager Modal (PySide6)
 # Multi-tab AFC File Browser, App Container Inspector, and DCIM Media Manager
 # =============================================================================
 
 import os
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
     QListWidget, QListWidgetItem, QLabel, QFileDialog, QTabWidget,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QWidget, QFrame
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont
 
 from utils.ios_core.file_system import FileSystemManager, AFCException
 from utils.resource_manager import safe_run_command
 
 
 class IosFileLoadWorker(QThread):
-    items_loaded = pyqtSignal(list, str)   # items [(name, is_dir)], path
-    error_signal = pyqtSignal(str)
+    items_loaded = Signal(list, str)   # items [(name, is_dir)], path
+    error_signal = Signal(str)
 
     def __init__(self, path="/"):
         super().__init__()
@@ -42,8 +42,8 @@ class IosFileLoadWorker(QThread):
 
 
 class IosAppsWorker(QThread):
-    apps_loaded = pyqtSignal(list)
-    error_signal = pyqtSignal(str)
+    apps_loaded = Signal(list)
+    error_signal = Signal(str)
 
     def run(self):
         ok, out = safe_run_command(["pymobiledevice3", "apps", "list"], timeout=15)
@@ -298,7 +298,7 @@ class IosFileManagerDialog(QDialog):
             QMessageBox.critical(self, "Error", f"Failed to upload file:\n{e}")
 
     def _make_folder(self):
-        from PyQt6.QtWidgets import QInputDialog
+        from PySide6.QtWidgets import QInputDialog
         folder_name, ok = QInputDialog.getText(self, "New Folder", "Enter new folder name:")
         if ok and folder_name.strip():
             new_path = (self.current_path.rstrip("/") + "/" + folder_name.strip()).replace("//", "/")

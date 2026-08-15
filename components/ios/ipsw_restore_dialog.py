@@ -1,22 +1,22 @@
 # =============================================================================
-# NicksFix — iOS IPSW Restore & Firmware Flashing Modal (PyQt6)
+# RootForgeKit — iOS IPSW Restore & Firmware Flashing Modal (PySide6)
 # idevicerestore wrapper for flashing IPSW images to iOS devices
 # =============================================================================
 
 import sys
 import os
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
     QLabel, QFileDialog, QPlainTextEdit, QMessageBox, QCheckBox
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont
 
 from utils.resource_manager import safe_run_command
 
 
 class IpswRestoreWorker(QThread):
-    finished_signal = pyqtSignal(bool, str)
+    finished_signal = Signal(bool, str)
 
     def __init__(self, ipsw_path: str, erase: bool = False):
         super().__init__()

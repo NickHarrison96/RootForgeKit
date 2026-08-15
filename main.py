@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Main Application Entry Point
+# RootForgeKit — Main Application Entry Point
 # Architecture:
 #   QMainWindow
 #     ├── QStackedWidget (central widget)
@@ -13,11 +13,11 @@
 import sys
 import os
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QStackedWidget,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont, QIcon
 
 from components.auth_dialog import AuthSplash
 from components.status_bar import PersistentStatusBar
@@ -29,10 +29,49 @@ from tabs.ios.tab import IosDriverTab
 from tabs.android.tab import AndroidDriverTab
 from tabs.hardware.tab import HardwareHealthTab
 from utils.hwid import get_smbios_info, get_display_summary
+from utils.paths import resource_path
 from utils.resource_manager import configure_global_thread_pool, install_global_crash_handler
 
-APP_VERSION = "0.01"
+APP_VERSION = "0.5"
 APP_STAGE = "Pre-Alpha"
+APP_AUTHOR = "KushNick420"
+
+# Windows groups taskbar buttons by "Application User Model ID". A Python
+# process inherits the interpreter's, so without setting this the taskbar shows
+# the generic Python icon and groups RootForgeKit under Python -- even though
+# the window icon itself is correct. Must be set BEFORE the first window is
+# created. Harmless no-op off Windows.
+APP_USER_MODEL_ID = "KushNick420.RootForgeKit"
+
+
+def _set_windows_app_id() -> None:
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+            APP_USER_MODEL_ID
+        )
+    except Exception:
+        # Cosmetic only -- a failure here must never stop the app starting.
+        pass
+
+
+def app_icon() -> QIcon:
+    """
+    The application icon, preferring the multi-resolution .ico.
+
+    The .ico carries 16-256px variants so Windows picks a crisp one per
+    context (taskbar, alt-tab, title bar) instead of downscaling a single
+    large bitmap. Falls back to the PNG, then to an empty icon rather than
+    raising -- a missing icon is a cosmetic problem, not a fatal one.
+    """
+    for name in ("app.ico", "app.png"):
+        path = resource_path("resources", name)
+        if os.path.exists(path):
+            return QIcon(path)
+    return QIcon()
 
 
 # =============================================================================
@@ -41,7 +80,7 @@ APP_STAGE = "Pre-Alpha"
 
 class HwidWorker(QThread):
     """Query SMBIOS data in background to avoid blocking the UI on startup."""
-    hwid_ready = pyqtSignal(dict)
+    hwid_ready = Signal(dict)
 
     def run(self):
         smbios = get_smbios_info()
@@ -53,7 +92,7 @@ class HwidWorker(QThread):
 # Main Window
 # =============================================================================
 
-class NicksFixMainWindow(QMainWindow):
+class RootForgeKitMainWindow(QMainWindow):
     """
     Main application window.
 
@@ -98,7 +137,7 @@ class NicksFixMainWindow(QMainWindow):
     def _setup_window(self):
         """Configure main window properties."""
         self.setWindowTitle(
-            f"NicksFix v{APP_VERSION} ({APP_STAGE}) — System Utility & Diagnostic Suite "
+            f"RootForgeKit v{APP_VERSION} ({APP_STAGE}) — System Utility & Diagnostic Suite "
             f"(Workers: {self.allocated_cores} Cores)"
         )
         self.setMinimumSize(1100, 720)
@@ -190,7 +229,7 @@ class NicksFixMainWindow(QMainWindow):
         # Update window title with the actual server role
         who = f" — {username}" if username else ""
         self.setWindowTitle(
-            f"NicksFix v{APP_VERSION} — System Utility & Diagnostic Suite  [{display_role.upper()}]{who}"
+            f"RootForgeKit v{APP_VERSION} — System Utility & Diagnostic Suite  [{display_role.upper()}]{who}"
         )
 
         # Replace the placeholder tab widget with the real one. This only
@@ -219,7 +258,7 @@ class NicksFixMainWindow(QMainWindow):
         self.username = ""
         self.tier = "guest"
         self.status_bar.set_session_state("ready")
-        self.setWindowTitle(f"NicksFix v{APP_VERSION} — System Utility & Diagnostic Suite")
+        self.setWindowTitle(f"RootForgeKit v{APP_VERSION} — System Utility & Diagnostic Suite")
 
         # Swap in a fresh AuthSplash — simpler and more reliable than trying
         # to rewind the previous instance's internal (possibly mid-request)
@@ -251,9 +290,8 @@ class NicksFixMainWindow(QMainWindow):
 # =============================================================================
 
 def load_stylesheet(app: QApplication) -> None:
-    """Load the QSS stylesheet from the project root."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    qss_path = os.path.join(base_dir, "styles.qss")
+    """Load the QSS stylesheet from the shipped application files."""
+    qss_path = resource_path("styles.qss")
 
     if os.path.exists(qss_path):
         with open(qss_path, "r", encoding="utf-8") as f:
@@ -268,15 +306,22 @@ def load_stylesheet(app: QApplication) -> None:
 # =============================================================================
 
 def main():
+    # Before QApplication, so the taskbar button picks up our identity.
+    _set_windows_app_id()
+
     app = QApplication(sys.argv)
-    app.setApplicationName("NicksFix")
-    app.setApplicationVersion("1.0.0")
-    app.setOrganizationName("NicksFix")
+    app.setApplicationName("RootForgeKit")
+    app.setApplicationVersion(APP_VERSION)
+    app.setOrganizationName(APP_AUTHOR)
     app.setFont(QFont("Segoe UI", 10))
+
+    # Set on the application so every window and dialog inherits it, rather
+    # than having to icon each one individually.
+    app.setWindowIcon(app_icon())
 
     load_stylesheet(app)
 
-    window = NicksFixMainWindow()
+    window = RootForgeKitMainWindow()
     window.show()
 
     sys.exit(app.exec())

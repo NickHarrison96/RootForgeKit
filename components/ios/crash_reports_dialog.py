@@ -1,24 +1,24 @@
 # =============================================================================
-# NicksFix — iOS Crash Reports Explorer Modal (PyQt6)
+# RootForgeKit — iOS Crash Reports Explorer Modal (PySide6)
 # AFC Crash Report service browser, stack trace viewer, and bulk download
 # =============================================================================
 
 import sys
 import os
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QListWidget,
     QListWidgetItem, QLabel, QFileDialog, QPlainTextEdit, QMessageBox,
     QSplitter, QWidget, QFrame
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont
 
 from utils.resource_manager import safe_run_command
 
 
 class CrashLogsWorker(QThread):
-    logs_loaded = pyqtSignal(list)
-    error_signal = pyqtSignal(str)
+    logs_loaded = Signal(list)
+    error_signal = Signal(str)
 
     def run(self):
         ok, out = safe_run_command([sys.executable, "-m", "pymobiledevice3", "crash", "ls"], timeout=15)

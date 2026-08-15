@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — OS Logo Resolution & Rendering
+# RootForgeKit — OS Logo Resolution & Rendering
 #
 # Replaces the old ASCII art on the Overview tab. Vector logos live in
 # resources/logos/ and are rendered to a crisp QPixmap at the requested size,
@@ -15,9 +15,9 @@ import platform
 import subprocess
 import sys
 
-from PyQt6.QtCore import Qt, QRectF, QSize
-from PyQt6.QtGui import QPainter, QPixmap, QColor
-from PyQt6.QtSvg import QSvgRenderer
+from PySide6.QtCore import Qt, QRectF, QSize
+from PySide6.QtGui import QPainter, QPixmap, QColor
+from PySide6.QtSvg import QSvgRenderer
 
 
 LOGO_DIR = os.path.join(

@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — iOS Lockdown Control Panel (PyQt6)
+# RootForgeKit — iOS Lockdown Control Panel (PySide6)
 #
 # Two tabs:
 #   Control    — device power control, settings, vitals, feature toggles,
@@ -12,14 +12,14 @@
 
 import sys
 import json
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLineEdit,
     QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
     QComboBox, QWidget, QFrame, QGroupBox, QCheckBox, QTabWidget,
     QPlainTextEdit,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont
 
 from utils.resource_manager import safe_run_command
 
@@ -34,7 +34,7 @@ DESTRUCTIVE_ACTIONS = {
 
 class LockdownCommandWorker(QThread):
     """Runs one pymobiledevice3 command and reports its result."""
-    done = pyqtSignal(str, bool, str)   # key, ok, output
+    done = Signal(str, bool, str)   # key, ok, output
 
     def __init__(self, key: str, args: list[str], timeout: int = 20):
         super().__init__()
@@ -50,8 +50,8 @@ class LockdownCommandWorker(QThread):
 
 
 class LockdownValuesWorker(QThread):
-    values_loaded = pyqtSignal(dict)
-    error_signal = pyqtSignal(str)
+    values_loaded = Signal(dict)
+    error_signal = Signal(str)
 
     def __init__(self, domain: str = ""):
         super().__init__()

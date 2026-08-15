@@ -1,16 +1,16 @@
 # =============================================================================
-# NicksFix — Hardware Health & Telemetry Inspector Tab
+# RootForgeKit — Hardware Health & Telemetry Inspector Tab
 # Async hardware telemetry querying, disk partition health breakdown,
 # battery metrics, and SMART status monitoring console.
 # =============================================================================
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
     QProgressBar, QTextEdit, QGroupBox, QSplitter
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont
 
 from utils.hardware_inspector import (
     get_battery_telemetry,
@@ -21,7 +21,7 @@ from utils.hardware_inspector import (
 
 class HardwareHealthWorker(QThread):
     """Asynchronously query battery, disk partitions, and SMART status."""
-    data_ready = pyqtSignal(dict)
+    data_ready = Signal(dict)
 
     def run(self):
         battery = get_battery_telemetry()

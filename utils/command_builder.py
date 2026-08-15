@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Cross-Platform Command Builder
+# RootForgeKit — Cross-Platform Command Builder
 # Maps logical tool/install keys to native OS package manager commands.
 # Supports: winget/DISM (Windows), brew (macOS), apt (Linux).
 # =============================================================================
@@ -31,7 +31,7 @@ def ps_encoded_command(script: str) -> str:
     return f"powershell -NoProfile -EncodedCommand {encoded}"
 
 
-# Command keys that genuinely require Administrator. NicksFix launches
+# Command keys that genuinely require Administrator. RootForgeKit launches
 # unelevated (see utils/elevation.py), so these are the only ones that
 # trigger a UAC prompt, and only when the user actually clicks them.
 #

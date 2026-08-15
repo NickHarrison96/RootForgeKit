@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Operation Progress Panel
+# RootForgeKit — Operation Progress Panel
 #
 # Shared progress UI for long-running device operations (backup, restore, DDI
 # mount, IPSW flash, bulk pull). Pairs with utils.process_runner:
@@ -14,12 +14,12 @@
 # expandable log.
 # =============================================================================
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QProgressBar, QPlainTextEdit, QFrame,
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QFont
 
 from utils.process_runner import format_duration
 
@@ -27,7 +27,7 @@ from utils.process_runner import format_duration
 class OperationProgressPanel(QFrame):
     """Live progress display for a StreamingProcessRunner."""
 
-    cancel_requested = pyqtSignal()
+    cancel_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)

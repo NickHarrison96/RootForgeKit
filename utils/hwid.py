@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — SMBIOS Hardware Identity Engine
+# RootForgeKit — SMBIOS Hardware Identity Engine
 # Queries SMBIOS Type 001 (System) & Type 002 (Baseboard) parameters to extract
 # Motherboard Vendor, Model, System UUID. Computes a cryptographically unique
 # SHA-256 Licensing Host ID hash. Filters OEM placeholder strings.

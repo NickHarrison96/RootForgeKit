@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Desktop Auth Client
+# RootForgeKit — Desktop Auth Client
 #
 # Talks to server/auth_server.py, persists the session token in the OS
 # keyring (Windows Credential Manager / macOS Keychain / Linux Secret
@@ -13,15 +13,15 @@
 
 import json
 import os
-import platform
 from dataclasses import dataclass
 
 import keyring
 import requests
 
 from utils.hwid import compute_host_id
+from utils.paths import config_dir
 
-SERVICE_NAME = "NicksFix"
+SERVICE_NAME = "RootForgeKit"
 DEFAULT_BASE_URL = "http://192.168.1.127:8000"
 REQUEST_TIMEOUT = 6  # seconds — keeps a dead/offline server from freezing the caller
 
@@ -35,7 +35,7 @@ REQUEST_TIMEOUT = 6  # seconds — keeps a dead/offline server from freezing the
 #
 # SECURITY: anyone who reads this source (it ships unobfuscated) gets a
 # permanent admin key that ignores HWID licensing and works offline. This is
-# only acceptable because NicksFix is pre-alpha and unreleased. Flip
+# only acceptable because RootForgeKit is pre-alpha and unreleased. Flip
 # DEBUG_BYPASS_ENABLED to False (or delete this block and the guard in
 # login()) before the app is distributed to anyone.
 # =============================================================================
@@ -62,21 +62,7 @@ class AuthResult:
     tier: str | None = None
 
 
-def _config_dir() -> str:
-    """Per-user config directory, without adding a platformdirs dependency."""
-    system = platform.system()
-    if system == "Windows":
-        base = os.environ.get("APPDATA", os.path.expanduser("~"))
-    elif system == "Darwin":
-        base = os.path.expanduser("~/Library/Application Support")
-    else:
-        base = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
-    path = os.path.join(base, "NicksFix")
-    os.makedirs(path, exist_ok=True)
-    return path
-
-
-SESSION_FILE = os.path.join(_config_dir(), "session.json")
+SESSION_FILE = os.path.join(config_dir(), "session.json")
 
 
 class AuthClient:
@@ -91,7 +77,7 @@ class AuthClient:
     def __init__(self, base_url: str | None = None):
         self.base_url = (
             base_url
-            or os.environ.get("NICKSFIX_AUTH_URL", DEFAULT_BASE_URL)
+            or os.environ.get("ROOTFORGEKIT_AUTH_URL", DEFAULT_BASE_URL)
         ).rstrip("/")
         self.hwid = compute_host_id()
 

@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Unified Prerequisites & Driver Setup Tab
+# RootForgeKit — Unified Prerequisites & Driver Setup Tab
 #
 # Layout:
 #   Scrollable page of CollapsibleSection accordions:
@@ -17,15 +17,16 @@ import platform
 import shutil
 import subprocess
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QPushButton, QScrollArea, QSizePolicy, QSplitter, QTextEdit
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal as Signal, pyqtSlot as Slot
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal, Slot
+from PySide6.QtGui import QFont
 
 from components.terminal_widget import TerminalConsoleWidget
 from utils.command_builder import CommandBuilder, requires_admin
+from utils.paths import find_platform_tool, platform_tools_install_dir
 from tabs.base_driver_tab import CollapsibleSection
 from components.requirement_item import RequirementItemWidget
 from utils.resource_manager import safe_run_command
@@ -445,22 +446,18 @@ class PrereqsTab(QWidget):
 
     def _build_android_reqs(self) -> dict:
         host = platform.system().lower()
-        local_pt = os.path.abspath(os.path.join("bin", "platform-tools"))
 
+        # A system-wide install wins; otherwise fall back to whatever we
+        # shipped or downloaded. find_platform_tool() knows both locations —
+        # this used to be a CWD-relative "bin/platform-tools", which only
+        # resolved correctly when the process happened to start in the
+        # project folder.
         def check_adb():
-            p = shutil.which("adb")
-            if not p:
-                c = os.path.join(local_pt, "adb.exe" if os.name == "nt" else "adb")
-                if os.path.isfile(c):
-                    p = c
+            p = shutil.which("adb") or find_platform_tool("adb")
             return (bool(p), f"Found at {p}" if p else "Not found in PATH or local bin/")
 
         def check_fastboot():
-            p = shutil.which("fastboot")
-            if not p:
-                c = os.path.join(local_pt, "fastboot.exe" if os.name == "nt" else "fastboot")
-                if os.path.isfile(c):
-                    p = c
+            p = shutil.which("fastboot") or find_platform_tool("fastboot")
             return (bool(p), f"Found at {p}" if p else "Not found")
 
         adb_label = "Android Debug Bridge (adb.exe)" if host == "windows" else "Android Debug Bridge (adb)"
@@ -482,8 +479,11 @@ class PrereqsTab(QWidget):
         if not url:
             log("[-] Unsupported OS for automated SDK download.")
             return
-        bin_dir  = os.path.abspath("bin")
-        os.makedirs(bin_dir, exist_ok=True)
+        # Extract to the per-user data directory, never beside the executable:
+        # a packaged app's own folder is read-only (and, for a onefile build, a
+        # temp dir that is deleted on exit — the SDK would vanish every launch).
+        target_dir = platform_tools_install_dir()
+        bin_dir  = os.path.dirname(target_dir)
         zip_path = os.path.join(bin_dir, "platform-tools.zip")
         try:
             log("[*] Downloading SDK Platform Tools from Google...")
@@ -497,9 +497,10 @@ class PrereqsTab(QWidget):
             with zipfile.ZipFile(zip_path, "r") as z:
                 z.extractall(bin_dir)
             os.remove(zip_path)
-            pt = os.path.join(bin_dir, "platform-tools")
-            os.environ["PATH"] = pt + os.pathsep + os.environ["PATH"]
-            log(f"[+] ADB/Fastboot ready at {pt}")
+            # The zip carries its own top-level platform-tools/ folder, so
+            # extracting into bin_dir lands exactly on target_dir.
+            os.environ["PATH"] = target_dir + os.pathsep + os.environ["PATH"]
+            log(f"[+] ADB/Fastboot ready at {target_dir}")
         except Exception as e:
             log(f"[!] Android setup failed: {e}")
 

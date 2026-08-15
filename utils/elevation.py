@@ -1,7 +1,7 @@
 # =============================================================================
-# NicksFix — Elevation Helpers
+# RootForgeKit — Elevation Helpers
 #
-# NicksFix deliberately launches UNELEVATED. Only a handful of operations
+# RootForgeKit deliberately launches UNELEVATED. Only a handful of operations
 # actually need Administrator (the iOS tunnel interface, SFC, DISM, and
 # machine-scope winget installs) — forcing a UAC prompt on every single
 # launch to cover those was pure friction for the ~90% of sessions that
@@ -34,7 +34,7 @@ def is_admin() -> bool:
 
 def relaunch_as_admin() -> tuple[bool, str]:
     """
-    Relaunch NicksFix elevated via UAC. The caller is expected to quit the
+    Relaunch RootForgeKit elevated via UAC. The caller is expected to quit the
     current (unelevated) instance once this returns success — the two must
     not run side by side.
 
@@ -46,7 +46,7 @@ def relaunch_as_admin() -> tuple[bool, str]:
     """
     if sys.platform != "win32":
         return False, (
-            "Automatic relaunch is Windows-only. Restart NicksFix with "
+            "Automatic relaunch is Windows-only. Restart RootForgeKit with "
             "sudo/root privileges if a tool reports it needs them."
         )
 
@@ -64,7 +64,7 @@ def relaunch_as_admin() -> tuple[bool, str]:
         return False, f"Could not request elevation: {e}"
 
     if rc > 32:
-        return True, "Restarting NicksFix as Administrator…"
+        return True, "Restarting RootForgeKit as Administrator…"
     if rc == 5:  # SE_ERR_ACCESSDENIED — the user dismissed the UAC dialog
         return False, "Elevation was declined."
     return False, f"Elevation failed (ShellExecute code {rc})."

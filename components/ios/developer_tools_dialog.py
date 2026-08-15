@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — iOS Developer Tools & DDI Manager Modal (PyQt6)
+# RootForgeKit — iOS Developer Tools & DDI Manager Modal (PySide6)
 # AMFI Developer Mode, Developer Disk Image (DDI) Mounter,
 # RemoteXPC / RSD tunnel control (iOS 17+).
 #
@@ -12,12 +12,12 @@
 # =============================================================================
 
 import sys
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLabel,
     QPlainTextEdit, QMessageBox, QWidget, QFrame, QGroupBox
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont
 
 from components.progress_panel import OperationProgressPanel
 from utils.process_runner import StreamingProcessRunner
@@ -30,7 +30,7 @@ from utils.ios_core.tunnel_manager import (
 
 class DevToolsWorker(QThread):
     """Runs one setup action off the UI thread."""
-    finished_signal = pyqtSignal(bool, str)
+    finished_signal = Signal(bool, str)
 
     def __init__(self, action: str):
         super().__init__()
@@ -77,7 +77,7 @@ class DevToolsWorker(QThread):
 
 class StatusWorker(QThread):
     """Collects device/tunnel state without freezing the UI."""
-    status_ready = pyqtSignal(dict)
+    status_ready = Signal(dict)
 
     def run(self):
         tm = get_tunnel_manager()

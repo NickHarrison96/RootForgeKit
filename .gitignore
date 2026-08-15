@@ -66,6 +66,9 @@ temp_shot.png
 # Exception: project artwork IS tracked (logos are SVG, but keep this explicit
 # in case raster assets are added later).
 !resources/logos/**
+# App icon: logo.png is the master art, app.png/app.ico are generated from it.
+!resources/logo.png
+!resources/app.png
 
 # ---- Auth server: entire directory excluded from the public repo, not just
 # secrets — deploy scripts, VM host details, and infra layout don't belong
@@ -80,3 +83,7 @@ RevLog.md
 .env
 .env.*
 *.local.json
+
+# ---- PyInstaller build output ----
+build/
+dist/

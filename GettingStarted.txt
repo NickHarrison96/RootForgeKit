@@ -1,0 +1,7 @@
+/// INTERNAL USE ONLY /// Pre Production Use ONLY ///
+
+1. Go to microsoft store and download python 3.10 or newer [time of release 3.13]
+2. once installed open terminal and cd to your project folder "cd c:/___/____/"
+3. in terminal enter "pip install -r requirements.txt" and hit enter and wait.
+4. if all was successful program is ready.
+5. run it with "python main.py"

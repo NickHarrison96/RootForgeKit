@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — iOS Lockdown Control Panel (embeddable widget)
+# RootForgeKit — iOS Lockdown Control Panel (embeddable widget)
 #
 # Device power control, settings, vitals, feature toggles and activation state,
 # all over lockdown services. Lives on the iOS Tools primary (iDevice) page so
@@ -11,12 +11,12 @@
 import sys
 import json
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLineEdit,
     QLabel, QMessageBox, QGroupBox, QCheckBox, QPlainTextEdit, QSizePolicy,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont
 
 from utils.resource_manager import safe_run_command
 
@@ -31,7 +31,7 @@ DESTRUCTIVE_ACTIONS = {
 
 class LockdownCommandWorker(QThread):
     """Runs one pymobiledevice3 command and reports its result."""
-    done = pyqtSignal(str, bool, str)   # key, ok, output
+    done = Signal(str, bool, str)   # key, ok, output
 
     def __init__(self, key: str, args: list[str], timeout: int = 20):
         super().__init__()
@@ -50,7 +50,7 @@ class LockdownControlPanel(QWidget):
     """Embeddable lockdown control surface."""
 
     # Mirrors log lines out to a host console (e.g. the tab's verbose output).
-    log_message = pyqtSignal(str)
+    log_message = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)

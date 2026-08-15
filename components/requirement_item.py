@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QPushButton
-from PyQt6.QtCore import pyqtSignal as Signal, Qt
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QPushButton
+from PySide6.QtCore import Signal, Qt
 
 class RequirementItemWidget(QWidget):
     verify_requested = Signal(str)

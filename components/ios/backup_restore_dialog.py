@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — iOS Forensic Backup & Restore Wizard Modal (PyQt6)
+# RootForgeKit — iOS Forensic Backup & Restore Wizard Modal (PySide6)
 #
 # Acquisition modes (ported from the iForensics toolkit):
 #   Logical       mobilebackup2 iTunes-style backup
@@ -10,15 +10,16 @@
 
 import sys
 import os
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLineEdit,
     QLabel, QFileDialog, QTabWidget, QMessageBox, QWidget, QFrame,
     QCheckBox, QProgressBar, QRadioButton, QButtonGroup, QGroupBox
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont
 
 from components.progress_panel import OperationProgressPanel
+from utils.paths import backups_dir
 from utils.process_runner import StreamingProcessRunner
 from utils.ios_core.backup_engine import AcquisitionWorker, ACQUISITION_MODES
 
@@ -59,7 +60,7 @@ class BackupRestoreDialog(QDialog):
         b_layout.addWidget(lbl_b_desc)
 
         dir_row = QHBoxLayout()
-        self.backup_path_input = QLineEdit(os.path.abspath("backups"))
+        self.backup_path_input = QLineEdit(backups_dir())
         dir_row.addWidget(self.backup_path_input, stretch=1)
         btn_browse_b = QPushButton("Browse...")
         btn_browse_b.clicked.connect(self._browse_backup_dir)
@@ -178,7 +179,7 @@ class BackupRestoreDialog(QDialog):
             self.backup_path_input.setText(d)
 
     def _browse_restore_dir(self):
-        d = QFileDialog.getExistingDirectory(self, "Select Backup Folder to Restore", os.path.abspath("backups"))
+        d = QFileDialog.getExistingDirectory(self, "Select Backup Folder to Restore", backups_dir())
         if d:
             self.restore_path_input.setText(d)
 

@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — CPU/GPU Vendor Detection
+# RootForgeKit — CPU/GPU Vendor Detection
 # Best-effort vendor identification so Tech Tools can route driver-install
 # buttons correctly (Intel has a real winget-installable auto-detect tool;
 # AMD and NVIDIA don't publish one, so those route to the vendor's official

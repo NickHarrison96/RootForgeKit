@@ -1,14 +1,14 @@
 # =============================================================================
-# NicksFix — Persistent Bottom Status Taskbar
+# RootForgeKit — Persistent Bottom Status Taskbar
 # QStatusBar component that remains visible across ALL views (login splash +
 # all interior tabs). Displays:
 #   Left:  Session state (● SYSTEM READY / ● LOGGED IN [ROLE])
 #   Right: SMBIOS Motherboard Make/Model + Host ID hash
 # =============================================================================
 
-from PyQt6.QtWidgets import QStatusBar, QLabel, QWidget, QHBoxLayout, QFrame, QPushButton
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtWidgets import QStatusBar, QLabel, QWidget, QHBoxLayout, QFrame, QPushButton
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont
 
 
 class PersistentStatusBar(QStatusBar):
@@ -26,7 +26,7 @@ class PersistentStatusBar(QStatusBar):
         status_bar.set_session_state("technician")
     """
 
-    sign_out_requested = pyqtSignal()
+    sign_out_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)

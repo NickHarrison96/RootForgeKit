@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Login Splash & Role State Signal Manager
+# RootForgeKit — Login Splash & Role State Signal Manager
 # Embeddable QWidget (not QDialog) that lives inside QStackedWidget so the
 # persistent QStatusBar remains visible underneath. Emits role signal on auth.
 #
@@ -13,19 +13,20 @@
 # is no separate admin-only surface in the UI yet.
 # =============================================================================
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QFrame, QSizePolicy, QSpacerItem,
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont, QPixmap
 
 from utils.auth_client import AuthClient, AuthResult
+from utils.paths import resource_path
 
 
 class _AuthWorker(QThread):
     """Runs one AuthClient call off the UI thread."""
-    result_ready = pyqtSignal(object)  # AuthResult
+    result_ready = Signal(object)  # AuthResult
 
     def __init__(self, fn, *args, parent=None):
         super().__init__(parent)
@@ -61,7 +62,7 @@ class AuthSplash(QWidget):
                                        "free"/"paid"/"diamond"/"guest" (see
                                        utils/tiers.py) for feature gating.
     """
-    auth_complete = pyqtSignal(str, str, str, str)
+    auth_complete = Signal(str, str, str, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -91,13 +92,24 @@ class AuthSplash(QWidget):
         card_layout.setSpacing(0)
 
         # ---- App Branding ----
-        logo_label = QLabel("🔧")
-        logo_label.setFont(QFont("Segoe UI Emoji", 40))
+        logo_label = QLabel()
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        logo_pixmap = QPixmap(resource_path("resources", "app.png"))
+        if logo_pixmap.isNull():
+            # Keep the old emoji as a fallback so a missing asset degrades to
+            # the previous look instead of an empty gap in the card.
+            logo_label.setText("🔧")
+            logo_label.setFont(QFont("Segoe UI Emoji", 40))
+        else:
+            logo_label.setPixmap(logo_pixmap.scaled(
+                96, 96,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            ))
         card_layout.addWidget(logo_label)
-        card_layout.addSpacing(4)
+        card_layout.addSpacing(8)
 
-        title_label = QLabel("NicksFix")
+        title_label = QLabel("RootForgeKit")
         title_label.setObjectName("AuthTitle")
         title_label.setFont(QFont("Segoe UI", 22, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -108,6 +120,12 @@ class AuthSplash(QWidget):
         subtitle_label.setFont(QFont("Segoe UI", 10))
         subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         card_layout.addWidget(subtitle_label)
+
+        byline_label = QLabel("by KushNick420")
+        byline_label.setObjectName("AuthByline")
+        byline_label.setFont(QFont("Segoe UI", 9))
+        byline_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        card_layout.addWidget(byline_label)
         card_layout.addSpacing(18)
 
         # ---- Separator ----
