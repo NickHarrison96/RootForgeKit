@@ -284,54 +284,149 @@ exit /b 0
 
 :: ============================================================
 :: :try_auto_install_python
-:: Fresh-machine bootstrap: no usable Python was found on PATH, so
-:: if winget is available (verified by actually running it, same
-:: rule as :try_python), silently install Python 3.12 -- pinned to
-:: 3.12 specifically because that is the exact version this app's
-:: dependencies are verified against, not just "whatever is
-:: newest". winget package ID and flags confirmed via `winget show
-:: Python.Python.3.12` / `winget install --help` -- not guessed.
+:: Fresh-machine bootstrap: no usable Python was found, so install
+:: one and keep going -- no "go download Python and re-run me".
 ::
-:: A freshly installed Python updates the registry's PATH, but NOT
-:: this already-running process's copy of it -- installers can't
-:: reach into a live process's environment block. Re-reading PATH
-:: from HKLM+HKCU via .NET's GetEnvironmentVariable (which returns
-:: it already expanded, unlike a raw `reg query` on a REG_EXPAND_SZ
-:: value, which would hand back literal, unexpanded "%LOCALAPPDATA%"
-:: text) is what lets the *same* :try_python candidates find the
-:: interpreter that was just installed, with no separate "restart
-:: the terminal" step for the user.
+:: WHY PrependPath=1 IS NOT OPTIONAL: the python.org installer does
+:: NOT put python.exe on PATH unless explicitly told to, and the
+:: winget manifest for Python.Python.3.12 declares no installer
+:: switches of its own (confirmed with `winget show`). So a plain
+:: `winget install Python.Python.3.12` genuinely succeeds and still
+:: leaves PATH untouched -- which is exactly the failure seen on a
+:: fresh Win11 VM: "[OK] installed via winget" immediately followed
+:: by "still cannot be found". Passing the installer arguments
+:: through --custom is what actually makes it land on PATH.
 ::
-:: Never sets PYTHON_CMD on failure -- the caller's existing
-:: manual-install error message is the fallback, unchanged. This is
-:: purely additive and cannot make a machine that already has
-:: Python behave any differently.
+:: THREE INDEPENDENT LAYERS, because any one of them can fail on a
+:: machine we can't see:
+::   1. install with PrependPath=1 (fixes PATH at the source)
+::   2. re-read PATH from the registry, since an installer cannot
+::      update THIS already-running process's environment block
+::   3. if it's still not on PATH, look for python.exe directly in
+::      the standard install folders, then persist that folder to
+::      the user PATH ourselves
+:: Layer 3 is the one that makes this robust: it does not care
+:: whether the installer, winget, or the registry cooperated.
+::
+:: If winget is missing or fails outright, fall back to downloading
+:: the official installer from python.org and running it with the
+:: same flags. Old Win11 images ship winget 1.2, which is why we
+:: stick to long-supported flags (-e, --silent, --custom,
+:: --accept-*) and never assume a modern winget.
+::
+:: Never sets PYTHON_CMD on failure -- the caller's manual-install
+:: error message stays the last resort, so a machine that already
+:: has Python is completely unaffected by any of this.
 :: ============================================================
 :try_auto_install_python
+set "PY_SERIES=3.12"
+set "PY_FULL=3.12.10"
+
 winget --version >nul 2>&1
 if errorlevel 1 (
-    echo [i] winget is not available - cannot auto-install Python.
-    exit /b 1
+    echo [i] winget is not available on this machine.
+    goto :py_direct_download
 )
 for /f "tokens=*" %%v in ('winget --version 2^>^&1') do set "WINGET_VER=%%v"
-echo [*] winget !WINGET_VER! found - installing Python 3.12 automatically...
+echo [*] winget !WINGET_VER! found - installing Python !PY_SERIES! automatically...
 echo     One-time setup on a fresh machine; may take a minute or two.
-winget install --id Python.Python.3.12 -e --silent --accept-package-agreements --accept-source-agreements
+echo.
+winget install --id Python.Python.!PY_SERIES! -e --silent --accept-package-agreements --accept-source-agreements --custom "InstallAllUsers=0 PrependPath=1 Include_launcher=1 Include_pip=1"
 if errorlevel 1 (
-    echo [i] Automatic Python install via winget did not succeed.
+    echo [i] winget could not install Python - falling back to a direct download.
+    goto :py_direct_download
+)
+echo [OK] winget reported Python !PY_SERIES! installed.
+goto :py_after_install
+
+:py_direct_download
+echo.
+echo [*] Downloading the official Python !PY_FULL! installer from python.org...
+set "PY_DL=%TEMP%\nicksfix-python-setup.exe"
+set "PY_DL_URL=https://www.python.org/ftp/python/!PY_FULL!/python-!PY_FULL!-amd64.exe"
+:: TLS 1.2 is forced because Windows PowerShell 5.1 does not always
+:: negotiate it by default, and python.org refuses anything older.
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri $env:PY_DL_URL -OutFile $env:PY_DL"
+if not exist "!PY_DL!" (
+    echo [i] Could not download the Python installer ^(no internet connection?^).
     exit /b 1
 )
-echo [OK] Python 3.12 installed via winget.
+echo [*] Running the Python installer silently ^(this adds it to PATH^)...
+"!PY_DL!" /quiet InstallAllUsers=0 PrependPath=1 Include_launcher=1 Include_pip=1
+echo [i] Python installer exited with code !errorlevel!.
+del "!PY_DL!" >nul 2>&1
 
+:py_after_install
 echo [*] Refreshing this session's PATH so the new install is visible...
 for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "[System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')"`) do set "PATH=%%p"
 
 call :try_python "py -3"
 if not defined PYTHON_CMD call :try_python "python"
 if not defined PYTHON_CMD call :try_python "python3"
+if defined PYTHON_CMD exit /b 0
 
+echo [i] Still not on PATH - searching the standard install folders directly...
+call :find_python_on_disk
 if not defined PYTHON_CMD (
-    echo [i] Python was installed but still cannot be found after a PATH refresh.
+    echo [i] Python still could not be located after installing.
     exit /b 1
 )
+exit /b 0
+
+:: ============================================================
+:: :find_python_on_disk
+:: Last-resort locator: ignore PATH entirely and look where the
+:: python.org installer actually puts things. This is what saves the
+:: run when an installer silently declines to touch PATH.
+:: Sets PYTHON_CMD (and persists the folder to the user PATH).
+:: ============================================================
+:find_python_on_disk
+set "FOUND_PY="
+set "FOUND_DIR="
+for /d %%D in ("%LOCALAPPDATA%\Programs\Python\Python3*") do call :consider_python_dir "%%D"
+for /d %%D in ("%ProgramFiles%\Python3*")                 do call :consider_python_dir "%%D"
+for /d %%D in ("C:\Python3*")                             do call :consider_python_dir "%%D"
+if not defined FOUND_PY exit /b 1
+set "PYTHON_CMD=!FOUND_PY!"
+echo [OK] Located Python at: !FOUND_DIR!
+call :persist_python_path "!FOUND_DIR!"
+exit /b 0
+
+:: ------------------------------------------------------------
+:: :consider_python_dir "<dir>"  -- validate one candidate folder.
+:: The 8.3 short path (%%~sF) is used so the resulting command has
+:: no spaces in it, which keeps every later `for /f` and direct
+:: invocation free of quoting problems (e.g. C:\Program Files\...).
+:: Keeps the LAST match, so a higher Python3xx folder wins.
+:: ------------------------------------------------------------
+:consider_python_dir
+set "CAND_DIR=%~1"
+if not exist "!CAND_DIR!\python.exe" exit /b 0
+for %%F in ("!CAND_DIR!\python.exe") do set "CAND_EXE=%%~sF"
+!CAND_EXE! -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" >nul 2>&1
+if errorlevel 1 exit /b 0
+for /f "tokens=*" %%v in ('!CAND_EXE! --version 2^>^&1') do set "CAND_VER=%%v"
+echo      candidate: !CAND_DIR!  ^(!CAND_VER!^)
+set "FOUND_PY=!CAND_EXE!"
+set "FOUND_DIR=!CAND_DIR!"
+exit /b 0
+
+:: ------------------------------------------------------------
+:: :persist_python_path "<dir>"
+:: Adds the Python folder (and its Scripts folder) to the user's
+:: PATH permanently, so the next launch -- and every other program
+:: the user opens -- can find Python too. Written via .NET rather
+:: than `setx`, because setx silently TRUNCATES PATH at 1024
+:: characters, which would corrupt the user's environment.
+:: Also updates this process's PATH so the rest of this run works.
+:: ------------------------------------------------------------
+:persist_python_path
+set "NEWPYDIR=%~1"
+echo [*] Adding Python to your PATH for future sessions...
+:: Entries are compared case-insensitively and with trailing slashes
+:: trimmed -- Windows writes these paths inconsistently (the python.org
+:: installer adds a trailing backslash), and a naive compare would
+:: append a duplicate PATH entry on every single run.
+powershell -NoProfile -Command "$d=$env:NEWPYDIR.TrimEnd('\'); $p=[Environment]::GetEnvironmentVariable('Path','User'); if(-not $p){$p=''}; $has=$false; foreach($e in $p.Split(';')){ if($e.Trim().TrimEnd('\') -ieq $d){$has=$true} }; if(-not $has){ $new=($p.TrimEnd(';')+';'+$d+';'+$d+'\Scripts').TrimStart(';'); [Environment]::SetEnvironmentVariable('Path',$new,'User'); Write-Host '     [OK] Added to your user PATH.' } else { Write-Host '     [i] Already present on your user PATH.' }"
+set "PATH=!NEWPYDIR!;!NEWPYDIR!\Scripts;!PATH!"
 exit /b 0
