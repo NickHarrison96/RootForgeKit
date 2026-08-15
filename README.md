@@ -60,21 +60,22 @@ git clone <your-repo-url>
 cd NicksFix
 ```
 
-**Windows**
 ```bash
-start.bat
+python -m venv .venv
+.venv\Scripts\activate      # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
 ```
 
-**macOS / Linux**
-```bash
-./start.sh
-```
+### Building a standalone executable (Windows)
 
-The launcher checks for Python, creates a `.venv`, syncs dependencies from
-`requirements.txt`, and starts the app. To run it manually:
+`NixFix.spec` produces a onedir PyInstaller bundle (`dist/NixFix/NixFix.exe`) that
+doesn't need Python installed to run — see the comments in the spec for why onedir
+rather than onefile:
 
 ```bash
-pip install -r requirements.txt && python main.py
+pip install pyinstaller
+python -m PyInstaller NixFix.spec --noconfirm
 ```
 
 ### iOS 17+ setup

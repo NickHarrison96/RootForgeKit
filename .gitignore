@@ -80,3 +80,7 @@ RevLog.md
 .env
 .env.*
 *.local.json
+
+# ---- PyInstaller build output ----
+build/
+dist/

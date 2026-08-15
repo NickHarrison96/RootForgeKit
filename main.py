@@ -29,6 +29,7 @@ from tabs.ios.tab import IosDriverTab
 from tabs.android.tab import AndroidDriverTab
 from tabs.hardware.tab import HardwareHealthTab
 from utils.hwid import get_smbios_info, get_display_summary
+from utils.paths import resource_path
 from utils.resource_manager import configure_global_thread_pool, install_global_crash_handler
 
 APP_VERSION = "0.01"
@@ -251,9 +252,8 @@ class NicksFixMainWindow(QMainWindow):
 # =============================================================================
 
 def load_stylesheet(app: QApplication) -> None:
-    """Load the QSS stylesheet from the project root."""
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    qss_path = os.path.join(base_dir, "styles.qss")
+    """Load the QSS stylesheet from the shipped application files."""
+    qss_path = resource_path("styles.qss")
 
     if os.path.exists(qss_path):
         with open(qss_path, "r", encoding="utf-8") as f:
@@ -270,7 +270,7 @@ def load_stylesheet(app: QApplication) -> None:
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("NicksFix")
-    app.setApplicationVersion("1.0.0")
+    app.setApplicationVersion(APP_VERSION)
     app.setOrganizationName("NicksFix")
     app.setFont(QFont("Segoe UI", 10))
 
