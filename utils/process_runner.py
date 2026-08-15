@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Streaming Process Runner
+# RootForgeKit — Streaming Process Runner
 #
 # QProcess-backed runner for long operations (device backups, restores, IPSW
 # flashing, bulk pulls) that must NOT be wrapped in a fixed timeout.
@@ -15,7 +15,7 @@ import re
 import sys
 import time
 
-from PyQt6.QtCore import QObject, QProcess, pyqtSignal
+from PySide6.QtCore import QObject, QProcess, Signal
 
 
 # tqdm-style bars ("  45%|████▌     | 450/1000 [00:10<00:12, 44.5it/s]") and
@@ -36,10 +36,10 @@ class StreamingProcessRunner(QObject):
         finished(bool, str):  (success, summary message).
     """
 
-    progress = pyqtSignal(int)
-    status = pyqtSignal(str)
-    output = pyqtSignal(str)
-    finished = pyqtSignal(bool, str)
+    progress = Signal(int)
+    status = Signal(str)
+    output = Signal(str)
+    finished = Signal(bool, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -85,7 +85,7 @@ class StreamingProcessRunner(QObject):
         self._proc.errorOccurred.connect(self._on_error)
 
         proc_env = self._proc.processEnvironment()
-        from PyQt6.QtCore import QProcessEnvironment
+        from PySide6.QtCore import QProcessEnvironment
         proc_env = QProcessEnvironment.systemEnvironment()
         # Unbuffered output so progress arrives live rather than at exit.
         proc_env.insert("PYTHONUNBUFFERED", "1")

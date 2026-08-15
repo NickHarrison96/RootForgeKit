@@ -1,12 +1,12 @@
 # =============================================================================
-# NicksFix — Resource Manager, Core Allocator & Subprocess Runner
+# RootForgeKit — Resource Manager, Core Allocator & Subprocess Runner
 # =============================================================================
 
 import sys
 import os
 import subprocess
 import traceback
-from PyQt6.QtCore import QThreadPool
+from PySide6.QtCore import QThreadPool
 
 try:
     import psutil

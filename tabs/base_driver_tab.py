@@ -1,9 +1,9 @@
 import platform
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTextEdit, QLabel, QGroupBox, QFrame, QSizePolicy, QSplitter
 )
-from PyQt6.QtCore import Qt
+from PySide6.QtCore import Qt
 from utils.resource_manager import configure_global_thread_pool
 
 

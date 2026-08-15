@@ -1,11 +1,11 @@
 # =============================================================================
-# NicksFix — Batch Package & Preset Profile Installer
+# RootForgeKit — Batch Package & Preset Profile Installer
 # Automated silent batch package installation via winget (Windows) or brew (macOS)
 # =============================================================================
 
 import platform
 
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 from utils.resource_manager import safe_run_command
 
@@ -118,8 +118,8 @@ class BatchInstallWorker(QThread):
     carries terminal output back to the UI thread instead of the installer
     touching a widget directly from a worker thread, which Qt doesn't allow.
     """
-    log_line = pyqtSignal(str)
-    finished_profile = pyqtSignal(bool)
+    log_line = Signal(str)
+    finished_profile = Signal(bool)
 
     def __init__(self, profile_key: str, parent=None):
         super().__init__(parent)

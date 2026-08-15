@@ -1,16 +1,16 @@
 # =============================================================================
-# NicksFix — Mobile Interactive Modals & Step-by-Step Guides
+# RootForgeKit — Mobile Interactive Modals & Step-by-Step Guides
 # =============================================================================
 
 import os
 import re
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
     QListWidget, QListWidgetItem, QLabel, QFileDialog, QTabWidget,
     QTextBrowser, QFrame, QMessageBox, QPlainTextEdit
 )
-from PyQt6.QtCore import Qt, QProcess
-from PyQt6.QtGui import QFont, QTextCursor
+from PySide6.QtCore import Qt, QProcess
+from PySide6.QtGui import QFont, QTextCursor
 
 from utils.resource_manager import safe_run_command
 
@@ -279,7 +279,7 @@ class IosModeGuideDialog(QDialog):
         </ol>
 
         <div class="note">
-            <b>Note:</b> Once in Recovery mode, NicksFix and lockdown services will detect the device in recovery state.
+            <b>Note:</b> Once in Recovery mode, RootForgeKit and lockdown services will detect the device in recovery state.
         </div>
         """
 

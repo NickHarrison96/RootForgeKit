@@ -1,17 +1,17 @@
 # =============================================================================
-# NicksFix — Asynchronous Terminal Console Widget
+# RootForgeKit — Asynchronous Terminal Console Widget
 # QProcess-powered live terminal with real-time output streaming,
 # double-layer Y/N confirmation, and Clear/Copy/Abort controls.
 # =============================================================================
 
 import platform
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPlainTextEdit,
     QPushButton, QLabel, QMessageBox, QFrame,
 )
-from PyQt6.QtCore import Qt, QProcess, pyqtSignal
-from PyQt6.QtGui import QFont, QTextCursor, QColor
+from PySide6.QtCore import Qt, QProcess, Signal
+from PySide6.QtGui import QFont, QTextCursor, QColor
 
 from utils.elevation import is_admin, relaunch_as_admin
 
@@ -30,7 +30,7 @@ class TerminalConsoleWidget(QWidget):
         terminal = TerminalConsoleWidget()
         terminal.execute_command("echo Hello", "Test echo", "low")
     """
-    command_finished = pyqtSignal(int, str)  # exit_code, command_key
+    command_finished = Signal(int, str)  # exit_code, command_key
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -107,7 +107,7 @@ class TerminalConsoleWidget(QWidget):
             command_key:    Optional key identifier for the command.
             skip_confirm:   If True, skip confirmation (use with caution).
             requires_admin: If True, this command cannot work unelevated —
-                            offer to relaunch NicksFix as Administrator rather
+                            offer to relaunch RootForgeKit as Administrator rather
                             than letting it fail with a cryptic access error.
 
         Returns:
@@ -127,7 +127,7 @@ class TerminalConsoleWidget(QWidget):
             return False
 
         # ---- Elevation gate ----
-        # NicksFix runs unelevated by default; only the handful of tools that
+        # RootForgeKit runs unelevated by default; only the handful of tools that
         # genuinely need Administrator ask for it, and only when clicked.
         #
         # This always stops the current call: _offer_elevation either declines,
@@ -203,9 +203,9 @@ class TerminalConsoleWidget(QWidget):
             (
                 f"<b>{description}</b><br><br>"
                 "This tool cannot run without Administrator privileges.<br><br>"
-                "NicksFix runs unelevated so it doesn't prompt for UAC on every "
+                "RootForgeKit runs unelevated so it doesn't prompt for UAC on every "
                 "launch — only tools that genuinely need it, like this one, ask.<br><br>"
-                "Restart NicksFix as Administrator now?"
+                "Restart RootForgeKit as Administrator now?"
             ),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.Yes,
@@ -222,7 +222,7 @@ class TerminalConsoleWidget(QWidget):
         if started:
             # Hand off to the elevated instance and close this one, so two
             # copies aren't running against the same machine at once.
-            from PyQt6.QtWidgets import QApplication
+            from PySide6.QtWidgets import QApplication
             QApplication.quit()
         else:
             QMessageBox.warning(self, "Elevation Failed", message)
@@ -303,7 +303,7 @@ class TerminalConsoleWidget(QWidget):
 
     def _copy_logs(self):
         """Copy entire console content to clipboard."""
-        from PyQt6.QtWidgets import QApplication
+        from PySide6.QtWidgets import QApplication
         clipboard = QApplication.clipboard()
         if clipboard:
             clipboard.setText(self.console.toPlainText())

@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — iOS 17+ RemoteXPC / RSD Tunnel Manager
+# RootForgeKit — iOS 17+ RemoteXPC / RSD Tunnel Manager
 #
 # Why this exists:
 #   From iOS 17 onward Apple moved every developer service (DVT instruments,
@@ -262,7 +262,7 @@ class TunneldManager:
             "ok": admin,
             "detail": "Required to create the tunnel network interface."
                       if not admin else "Running elevated.",
-            "fix": "Restart NicksFix as Administrator, or approve the UAC prompt "
+            "fix": "Restart RootForgeKit as Administrator, or approve the UAC prompt "
                    "when starting the tunnel.",
         })
 

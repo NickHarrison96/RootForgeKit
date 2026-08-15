@@ -1,9 +1,10 @@
-# 🚀 NicksFix // PRE ALPHA // 
+# 🚀 RootForgeKit // PRE ALPHA // 
 
 **A cross-platform system utility, diagnostics and mobile-forensics suite.**
-Windows · macOS · Linux — built with PyQt6.
+Windows · macOS · Linux — built with PySide6.
+By KushNick420.
 ---
-NicksFix bundles the tools a technician actually reaches for — hardware health, system
+RootForgeKit bundles the tools a technician actually reaches for — hardware health, system
 repair, iOS and Android device work — into one dark-themed, 3uTools-inspired desktop app,
 instead of a drawer full of separate CLIs.
 ---
@@ -57,7 +58,7 @@ and OS-keyring session storage. Entirely optional; the app runs without it.
 
 ```bash
 git clone <your-repo-url>
-cd NicksFix
+cd RootForgeKit
 ```
 
 ```bash
@@ -69,13 +70,13 @@ python main.py
 
 ### Building a standalone executable (Windows)
 
-`NixFix.spec` produces a onedir PyInstaller bundle (`dist/NixFix/NixFix.exe`) that
+`RootForgeKit.spec` produces a onedir PyInstaller bundle (`dist/RootForgeKit/RootForgeKit.exe`) that
 doesn't need Python installed to run — see the comments in the spec for why onedir
 rather than onefile:
 
 ```bash
 pip install pyinstaller
-python -m PyInstaller NixFix.spec --noconfirm
+python -m PyInstaller RootForgeKit.spec --noconfirm
 ```
 
 ### iOS 17+ setup
@@ -87,12 +88,27 @@ Mode, auto-mount the DDI, then start the tunnel (this prompts for elevation). Wh
 
 ### Optional auth server
 
-See [`server/README.md`](server/README.md) for running the licensing server and exposing it
-via Cloudflare Tunnel. Skip it entirely to use the app in Guest mode.
+The licensing server is maintained in a separate, private repository. Skip it entirely to
+use the app in Guest mode.
 
 ---
 
 ## Recent Revisions
+
+### 2026-08-15 — v0.5: renamed to RootForgeKit, moved to PySide6, app icon
+- **The project is now RootForgeKit**, by KushNick420 — "NicksFix"/"NixFix" was always a
+  placeholder. The build artefact is `RootForgeKit.exe`. Existing local settings and saved
+  sessions read as empty after the rename; nothing is deleted, the old data just lives
+  under the previous name.
+- **Switched from PyQt6 to PySide6.** Same Qt 6, but LGPL instead of GPL, so the app can be
+  distributed closed-source. The UI is deliberately unchanged — this was a binding swap,
+  not a redesign. The build stays onedir so Qt's libraries remain separate and replaceable,
+  as LGPL requires.
+- **Real app icon** across the taskbar, window, executable and login screen, replacing the
+  placeholder emoji.
+- **The auth server moved to its own private repository.** It was never part of this
+  checkout (the directory has always been gitignored); it now has version control of its
+  own instead of none.
 
 ### 2026-08-11 — Containerised auth server, web registration page
 - **Auth server runs as a container on its own host**, separate from the machine running
@@ -129,7 +145,7 @@ package installers, and the initial iForensics feature ports.
 
 ## Project status
 
-**Pre-Alpha v0.01.** Actively developed. iOS features are verified against a physical iPad
+**Pre-Alpha v0.5.** Actively developed. iOS features are verified against a physical iPad
 on iOS 18.7.9; the macOS and Linux code paths are implemented but have had less hardware
 testing than Windows.
 

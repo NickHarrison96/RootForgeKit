@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Neofetch-Level Comprehensive System Telemetry Collector
+# RootForgeKit — Neofetch-Level Comprehensive System Telemetry Collector
 # =============================================================================
 
 import os
@@ -225,7 +225,7 @@ def get_system_summary() -> dict:
         "Resolution": get_display_resolution(),
         "Theme": get_theme_info(),
         "Shell": f"{shell_name} ({shell})",
-        "Terminal": "NixFix Suite Console",
+        "Terminal": "RootForgeKit Suite Console",
         "CPU": get_cpu_info(),
         "GPU": get_primary_gpu(),
         "Memory": get_memory_info(),

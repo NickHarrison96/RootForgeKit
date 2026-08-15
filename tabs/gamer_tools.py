@@ -1,18 +1,18 @@
 # =============================================================================
-# NicksFix — Gamer Tools Tab (Auth-Gated)
+# RootForgeKit — Gamer Tools Tab (Auth-Gated)
 # Gaming-focused utilities locked behind Technician authentication.
 # OS selector (Windows / macOS / Linux) reveals that platform's tool set.
 # =============================================================================
 
 import platform
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QPushButton, QGridLayout, QScrollArea, QSplitter, QSizePolicy,
     QStackedWidget, QButtonGroup,
 )
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 
 from components.terminal_widget import TerminalConsoleWidget
 from utils.command_builder import CommandBuilder, ps_encoded_command, requires_admin

@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — iOS Forensic Backup & Restore Wizard Modal (PyQt6)
+# RootForgeKit — iOS Forensic Backup & Restore Wizard Modal (PySide6)
 #
 # Acquisition modes (ported from the iForensics toolkit):
 #   Logical       mobilebackup2 iTunes-style backup
@@ -10,13 +10,13 @@
 
 import sys
 import os
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QLineEdit,
     QLabel, QFileDialog, QTabWidget, QMessageBox, QWidget, QFrame,
     QCheckBox, QProgressBar, QRadioButton, QButtonGroup, QGroupBox
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QFont
 
 from components.progress_panel import OperationProgressPanel
 from utils.paths import backups_dir

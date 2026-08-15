@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — iOS AFC File System Core Service
+# RootForgeKit — iOS AFC File System Core Service
 # =============================================================================
 
 import os

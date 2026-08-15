@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Filesystem Locations
+# RootForgeKit — Filesystem Locations
 #
 # One place that answers two different questions:
 #
@@ -28,7 +28,7 @@ import os
 import platform
 import sys
 
-APP_FOLDER_NAME = "NicksFix"
+APP_FOLDER_NAME = "RootForgeKit"
 
 
 def is_frozen() -> bool:

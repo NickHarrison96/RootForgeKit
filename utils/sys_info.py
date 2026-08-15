@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Asynchronous System Information Collector
+# RootForgeKit — Asynchronous System Information Collector
 # Uses psutil + platform APIs to gather hardware telemetry in a background
 # QThread so the UI never blocks during heavy polling.
 # =============================================================================
@@ -10,7 +10,7 @@ import time
 from datetime import timedelta
 
 import psutil
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 
 class SystemInfoWorker(QThread):
@@ -23,7 +23,7 @@ class SystemInfoWorker(QThread):
         worker.info_ready.connect(my_update_function)
         worker.start()
     """
-    info_ready = pyqtSignal(dict)
+    info_ready = Signal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)

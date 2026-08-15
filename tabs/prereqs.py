@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Unified Prerequisites & Driver Setup Tab
+# RootForgeKit — Unified Prerequisites & Driver Setup Tab
 #
 # Layout:
 #   Scrollable page of CollapsibleSection accordions:
@@ -17,12 +17,12 @@ import platform
 import shutil
 import subprocess
 
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
     QPushButton, QScrollArea, QSizePolicy, QSplitter, QTextEdit
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal as Signal, pyqtSlot as Slot
-from PyQt6.QtGui import QFont
+from PySide6.QtCore import Qt, QThread, Signal, Slot
+from PySide6.QtGui import QFont
 
 from components.terminal_widget import TerminalConsoleWidget
 from utils.command_builder import CommandBuilder, requires_admin

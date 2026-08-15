@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — iOS DVT Kit & Instruments Modal (PyQt6)
+# RootForgeKit — iOS DVT Kit & Instruments Modal (PySide6)
 # Processes, Live Screenshot, GPS Location Simulation, Power Assertions, System Monitor
 # =============================================================================
 
@@ -7,14 +7,14 @@ import os
 import subprocess
 import sys
 import json
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
     QLabel, QFileDialog, QTabWidget, QTableWidget, QTableWidgetItem,
     QHeaderView, QMessageBox, QWidget, QFrame, QComboBox, QDoubleSpinBox,
     QPlainTextEdit
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QFont, QPixmap
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QFont, QPixmap
 
 from utils.ios_core.tunnel_manager import run_developer_command, get_tunnel_manager
 
@@ -29,8 +29,8 @@ LOCATION_PRESETS = [
 
 
 class DvtProcessWorker(QThread):
-    procs_loaded = pyqtSignal(list)
-    error_signal = pyqtSignal(str)
+    procs_loaded = Signal(list)
+    error_signal = Signal(str)
 
     def run(self):
         ok, out = run_developer_command(["developer", "dvt", "proclist"], timeout=20)
@@ -219,7 +219,7 @@ class DvtKitDialog(QDialog):
 
         host_row = QHBoxLayout()
         host_row.addWidget(QLabel("Owner name:"))
-        self.power_hostname = QLineEdit("NicksFix")
+        self.power_hostname = QLineEdit("RootForgeKit")
         self.power_hostname.setToolTip("Identifier reported to the device as the current owner.")
         host_row.addWidget(self.power_hostname, stretch=1)
         power_layout.addLayout(host_row)
@@ -424,7 +424,7 @@ class DvtKitDialog(QDialog):
                                     "An assertion is already being held.")
             return
 
-        hostname = self.power_hostname.text().strip() or "NicksFix"
+        hostname = self.power_hostname.text().strip() or "RootForgeKit"
         tm = get_tunnel_manager()
         if not tm.is_running():
             QMessageBox.warning(self, "Tunnel Required",

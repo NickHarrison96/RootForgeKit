@@ -1,18 +1,18 @@
 # =============================================================================
-# NicksFix — Overview Dashboard Tab
+# RootForgeKit — Overview Dashboard Tab
 # Sleek Phone-Style Modular Widget Dashboard
 #   Left Panel:  Neofetch-style OS badge (ASCII logo, hostname, kernel, uptime)
 #   Right Panel: Moveable & resizable widget cards (CPU, GPU, RAM, Storage, Network, BIOS)
 # =============================================================================
 
 import json
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QFrame,
     QGridLayout, QProgressBar, QScrollArea, QSizePolicy,
     QPushButton, QApplication,
 )
-from PyQt6.QtCore import Qt, QTimer, QSettings, QMimeData, QPoint
-from PyQt6.QtGui import QFont, QDrag, QPixmap, QColor, QCursor
+from PySide6.QtCore import Qt, QTimer, QSettings, QMimeData, QPoint
+from PySide6.QtGui import QFont, QDrag, QPixmap, QColor, QCursor
 
 from utils.sys_info import SystemInfoWorker
 from utils.system_info import get_system_summary
@@ -20,9 +20,9 @@ from utils.os_logo import (
     detect_os_key, render_logo, LOGO_ACCENTS, DISPLAY_NAMES,
 )
 
-SETTINGS_ORG = "NicksFix"
+SETTINGS_ORG = "KushNick420"
 SETTINGS_APP = "OverviewWidgets"
-MIME_TYPE_CARD = "application/x-nicksfix-card"
+MIME_TYPE_CARD = "application/x-rootforgekit-card"
 
 
 class WidgetCard(QFrame):

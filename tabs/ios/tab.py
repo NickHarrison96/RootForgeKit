@@ -3,13 +3,13 @@ import sys
 import subprocess
 import shutil
 import asyncio
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QPushButton, QLabel, QVBoxLayout, QHBoxLayout,
     QWidget, QStackedWidget, QScrollArea, QFrame, QGridLayout, QGroupBox,
     QSizePolicy
 )
-from PyQt6.QtGui import QFont
-from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, QTimer, QThread, Signal
 from tabs.base_driver_tab import BaseDriverTab
 from utils.mobile_info import MOBILE_LOGOS, format_device_side_by_side
 from components.mobile_dialogs import IosModeGuideDialog, LiveStreamConsoleDialog
@@ -24,8 +24,8 @@ from components.ios.lockdown_panel import LockdownControlPanel
 
 
 class IosDevicePoller(QThread):
-    info_ready = pyqtSignal(dict)
-    error_signal = pyqtSignal(str)
+    info_ready = Signal(dict)
+    error_signal = Signal(str)
 
     def run(self):
         """Run everything inside a single async context to avoid nested event loop conflicts."""

@@ -1,21 +1,21 @@
 import os
 import shutil
 import re
-from PyQt6.QtWidgets import (
+from PySide6.QtWidgets import (
     QPushButton, QLabel, QVBoxLayout, QHBoxLayout,
     QWidget, QStackedWidget, QScrollArea, QFrame, QGridLayout,
     QGroupBox, QLineEdit, QFileDialog, QSizePolicy
 )
 from components.mobile_dialogs import AdbFileExplorerDialog, LiveStreamConsoleDialog
-from PyQt6.QtGui import QFont
-from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
+from PySide6.QtGui import QFont
+from PySide6.QtCore import Qt, QTimer, QThread, Signal
 from tabs.base_driver_tab import BaseDriverTab
 from utils.mobile_info import MOBILE_LOGOS, format_device_side_by_side
 from utils.resource_manager import safe_run_command
 
 
 class AndroidDevicePoller(QThread):
-    info_ready = pyqtSignal(dict)
+    info_ready = Signal(dict)
 
     def run(self):
         if not shutil.which("adb"):

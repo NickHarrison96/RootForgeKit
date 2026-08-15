@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Hardware Telemetry & Health Inspector
+# RootForgeKit — Hardware Telemetry & Health Inspector
 # Extracts battery, disk partitions, and SMART status via PowerShell/psutil
 # =============================================================================
 

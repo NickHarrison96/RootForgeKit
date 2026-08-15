@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Mobile Device Spec Formatter Utility
+# RootForgeKit — Mobile Device Spec Formatter Utility
 # =============================================================================
 
 MOBILE_LOGOS = {

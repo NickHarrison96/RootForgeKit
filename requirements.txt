@@ -2,4 +2,7 @@ psutil
 requests
 pymobiledevice3
 keyring
-PyQt6
+# PySide6, not PyQt6: LGPL rather than GPL, so the app can ship closed-source.
+# Keep the PyInstaller build onedir (Qt DLLs stay separate, user-replaceable)
+# to hold up the LGPL dynamic-linking condition.
+PySide6

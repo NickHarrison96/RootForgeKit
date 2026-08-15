@@ -1,11 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 # =============================================================================
-# NicksFix — PyInstaller build spec (Windows)
+# RootForgeKit — PyInstaller build spec (Windows)
 #
 # Build:
-#     .venv\Scripts\python.exe -m PyInstaller NixFix.spec --noconfirm
+#     .venv\Scripts\python.exe -m PyInstaller RootForgeKit.spec --noconfirm
 #
-# Produces dist\NixFix\ — a ONEDIR bundle (a folder with NixFix.exe in it),
+# Produces dist\RootForgeKit\ — a ONEDIR bundle (a folder with RootForgeKit.exe in it),
 # deliberately not a single .exe:
 #
 #   * onefile unpacks ~150 MB of Qt into a temp folder on EVERY launch, which
@@ -18,7 +18,7 @@
 # Ship it as a zip for now. A proper installer (Inno Setup) is the next step
 # once the contents stop changing.
 #
-# NOT ELEVATED: uac_admin is deliberately left off. NicksFix runs unelevated by
+# NOT ELEVATED: uac_admin is deliberately left off. RootForgeKit runs unelevated by
 # design (utils/elevation.py) and the handful of admin-only tools relaunch
 # themselves at click time. Setting uac_admin here would re-break that.
 # =============================================================================
@@ -83,9 +83,12 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    # The auth server is a separate service that runs on its own host. It is
-    # in this repo for convenience; it has no business inside the client.
-    excludes=["server", "tkinter"],
+    # PyQt6 is excluded deliberately, not just because it is unused: this app
+    # ships under PySide6's LGPL precisely so it can be distributed
+    # closed-source. Letting a stray GPL PyQt6 install get swept into the
+    # bundle would undo that. The exclude makes the build fail loudly rather
+    # than quietly shipping both.
+    excludes=["PyQt6", "tkinter"],
     noarchive=False,
     optimize=0,
 )
@@ -97,7 +100,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="NixFix",
+    name="RootForgeKit",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -108,7 +111,10 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    # icon="resources/app.ico",   # no icon authored yet
+    # Embedded in the .exe itself, which is what Explorer and the taskbar read
+    # before the app is even running. The in-app QIcon (main.app_icon) is a
+    # separate mechanism and both are needed.
+    icon=os.path.join(SPECPATH, "resources", "app.ico"),
 )
 
 # console=True is a PRE-ALPHA choice, not an oversight. The app narrates real
@@ -125,5 +131,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name="NixFix",
+    name="RootForgeKit",
 )

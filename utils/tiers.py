@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — Membership Tier Helper
+# RootForgeKit — Membership Tier Helper
 # Free < Paid < Diamond. Tier is set by Nick via direct DB edit for now (no
 # payment processor wired up yet — see RevLog 2026-08-13). Server is always
 # the source of truth; the desktop client never assigns or upgrades a tier

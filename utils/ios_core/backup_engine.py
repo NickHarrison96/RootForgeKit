@@ -1,5 +1,5 @@
 # =============================================================================
-# NicksFix — iOS Forensic Acquisition Engine
+# RootForgeKit — iOS Forensic Acquisition Engine
 #
 # Multi-mode device acquisition, ported from the iForensics toolkit:
 #
@@ -26,7 +26,7 @@ import tarfile
 import time
 from datetime import datetime
 
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 from utils.process_runner import format_duration
 
@@ -81,10 +81,10 @@ class AcquisitionWorker(QThread):
         finished(bool, str)  (success, summary)
     """
 
-    progress = pyqtSignal(int)
-    status = pyqtSignal(str)
-    output = pyqtSignal(str)
-    finished = pyqtSignal(bool, str)
+    progress = Signal(int)
+    status = Signal(str)
+    output = Signal(str)
+    finished = Signal(bool, str)
 
     def __init__(self, mode: str, output_dir: str,
                  options: dict | None = None, parent=None):
