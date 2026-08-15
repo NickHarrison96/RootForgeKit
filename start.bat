@@ -294,8 +294,18 @@ exit /b 0
 :: `winget install Python.Python.3.12` genuinely succeeds and still
 :: leaves PATH untouched -- which is exactly the failure seen on a
 :: fresh Win11 VM: "[OK] installed via winget" immediately followed
-:: by "still cannot be found". Passing the installer arguments
-:: through --custom is what actually makes it land on PATH.
+:: by "still cannot be found".
+::
+:: WHY --override AND NOT --custom: a brand-new Windows 11 image
+:: ships winget 1.2, which has no --custom flag at all -- it dies
+:: with "Argument name was not recognized for the current command:
+:: '--custom'" and installs nothing. --override exists in both 1.2
+:: and current winget, so it is the portable choice. The catch is
+:: that --override REPLACES the installer's argument string instead
+:: of appending to it, so /quiet has to be included explicitly; it
+:: is NOT implied the way it is with --silent. Do not "modernize"
+:: this to --custom -- that breaks the exact fresh-install case this
+:: whole routine exists for.
 ::
 :: THREE INDEPENDENT LAYERS, because any one of them can fail on a
 :: machine we can't see:
@@ -331,11 +341,24 @@ for /f "tokens=*" %%v in ('winget --version 2^>^&1') do set "WINGET_VER=%%v"
 echo [*] winget !WINGET_VER! found - installing Python !PY_SERIES! automatically...
 echo     One-time setup on a fresh machine; may take a minute or two.
 echo.
-winget install --id Python.Python.!PY_SERIES! -e --silent --accept-package-agreements --accept-source-agreements --custom "InstallAllUsers=0 PrependPath=1 Include_launcher=1 Include_pip=1"
+:: Attempt 1: install AND put it on PATH in one shot.
+winget install --id Python.Python.!PY_SERIES! -e --accept-package-agreements --accept-source-agreements --override "/quiet InstallAllUsers=0 PrependPath=1 Include_launcher=1 Include_pip=1"
+if not errorlevel 1 goto :py_winget_done
+
+:: Attempt 2: plain install, no installer arguments at all. Even with
+:: nothing done about PATH, this still puts python.exe ON DISK -- and
+:: the folder scan further down finds it there and fixes PATH itself.
+:: Getting Python installed by any means is what matters here; the
+:: PATH problem is recoverable afterwards, a missing Python is not.
+echo.
+echo [i] Install with PATH arguments did not succeed - retrying a plain install...
+winget install --id Python.Python.!PY_SERIES! -e --silent --accept-package-agreements --accept-source-agreements
 if errorlevel 1 (
     echo [i] winget could not install Python - falling back to a direct download.
     goto :py_direct_download
 )
+
+:py_winget_done
 echo [OK] winget reported Python !PY_SERIES! installed.
 goto :py_after_install
 
