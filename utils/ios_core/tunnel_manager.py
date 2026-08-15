@@ -34,17 +34,10 @@ TUNNELD_URL = f"http://{TUNNELD_HOST}:{TUNNELD_PORT}"
 RSD_REQUIRED_MAJOR = 17
 
 
-def is_admin() -> bool:
-    """True when the current process can create a virtual network interface."""
-    if sys.platform == "win32":
-        try:
-            return bool(ctypes.windll.shell32.IsUserAnAdmin())
-        except Exception:
-            return False
-    try:
-        return os.geteuid() == 0
-    except AttributeError:
-        return False
+# Single implementation lives in utils/elevation.py so the app-wide elevation
+# logic and this module can't drift apart. Re-exported here because
+# components/ios/developer_tools_dialog.py imports is_admin from this module.
+from utils.elevation import is_admin  # noqa: E402,F401
 
 
 def needs_tunnel(product_version: str | None) -> bool:

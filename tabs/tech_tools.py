@@ -16,7 +16,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
 from components.terminal_widget import TerminalConsoleWidget
-from utils.command_builder import CommandBuilder
+from utils.command_builder import CommandBuilder, requires_admin
 from utils.batch_installer import BatchInstallWorker
 from utils.os_logo import get_host_profile
 from utils.hardware_vendor import detect_cpu_vendor, detect_gpu_vendor
@@ -349,6 +349,7 @@ class TechToolsTab(QWidget):
             description=description,
             risk_level=risk_level,
             command_key=cmd_key,
+            requires_admin=requires_admin(cmd_key),
         )
 
     def _run_tech_batch_profile(self):

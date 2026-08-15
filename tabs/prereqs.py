@@ -25,7 +25,7 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal as Signal, pyqtSlot as Slot
 from PyQt6.QtGui import QFont
 
 from components.terminal_widget import TerminalConsoleWidget
-from utils.command_builder import CommandBuilder
+from utils.command_builder import CommandBuilder, requires_admin
 from tabs.base_driver_tab import CollapsibleSection
 from components.requirement_item import RequirementItemWidget
 from utils.resource_manager import safe_run_command
@@ -41,6 +41,12 @@ SYSTEM_PREREQS = {
         ("vcredist",      "VC++ Redistributable",  "Visual C++ 2015-2022 runtime — required by many applications."),
         ("dotnet",        ".NET Runtime",           ".NET 8 Desktop Runtime — needed for modern .NET applications."),
         ("directx",       "DirectX",               "DirectX End-User Runtime — required for gaming and multimedia."),
+        ("msys2",         "MSYS2",                 "Unix-like shell, GCC toolchain, and pacman package manager for Windows."),
+        ("zadig",         "Zadig",                 "Binds WinUSB, libusb-win32, or libusbK to a USB device — WinUSB ships "
+                                                     "built into Windows; Zadig is how you attach it to a specific device "
+                                                     "(e.g. DFU/bootloader-mode flashing)."),
+        ("libusbk",       "libusbK",               "USB driver framework used by libusb-based flashing/diagnostic tools — "
+                                                     "the driver package Zadig can bind to a device."),
         ("system_update", "System Updates",         "Update all installed packages via winget."),
     ],
     "Darwin": [
@@ -375,8 +381,19 @@ class PrereqsTab(QWidget):
             s.setText("🔄")
             b.setEnabled(False)
             b.setText("Installing...")
-        self.terminal.execute_command(command=command, description=description,
-                                      risk_level=risk_level, command_key=cmd_key)
+        started = self.terminal.execute_command(
+            command=command, description=description,
+            risk_level=risk_level, command_key=cmd_key,
+            requires_admin=requires_admin(cmd_key),
+        )
+        # If the command never started (declined, needs elevation, or the
+        # terminal was busy) the finished-signal will never fire, so undo the
+        # "Installing..." state here or the card spins forever.
+        if not started and cmd_key in self._card_widgets:
+            s, b = self._card_widgets[cmd_key]
+            s.setText("⏳")
+            b.setEnabled(True)
+            b.setText("▶  Install")
 
     def _on_command_finished(self, exit_code: int, command_key: str):
         if command_key in self._card_widgets:

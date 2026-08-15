@@ -13,6 +13,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QProcess, pyqtSignal
 from PyQt6.QtGui import QFont, QTextCursor, QColor
 
+from utils.elevation import is_admin, relaunch_as_admin
+
 
 class TerminalConsoleWidget(QWidget):
     """
@@ -93,23 +95,47 @@ class TerminalConsoleWidget(QWidget):
     # -------------------------------------------------------------------------
 
     def execute_command(self, command: str, description: str, risk_level: str,
-                        command_key: str = "", skip_confirm: bool = False):
+                        command_key: str = "", skip_confirm: bool = False,
+                        requires_admin: bool = False) -> bool:
         """
         Execute a command with double-layer confirmation protection.
 
         Args:
-            command:      The shell command string to run.
-            description:  Human-readable explanation of what the command does.
-            risk_level:   "low", "medium", or "high" — affects confirmation severity.
-            command_key:  Optional key identifier for the command.
-            skip_confirm: If True, skip confirmation (use with caution).
+            command:        The shell command string to run.
+            description:    Human-readable explanation of what the command does.
+            risk_level:     "low", "medium", or "high" — affects confirmation severity.
+            command_key:    Optional key identifier for the command.
+            skip_confirm:   If True, skip confirmation (use with caution).
+            requires_admin: If True, this command cannot work unelevated —
+                            offer to relaunch NicksFix as Administrator rather
+                            than letting it fail with a cryptic access error.
+
+        Returns:
+            True if the command was actually started, False if it was refused
+            at any gate (already busy, needs elevation, or user cancelled).
+
+            Callers that change UI state *before* calling this — e.g. flipping a
+            card to "Installing..." — must reset it when this returns False.
+            Otherwise the card sits on a spinner forever, because
+            _on_command_finished only fires for commands that really ran.
         """
         if self._process and self._process.state() != QProcess.ProcessState.NotRunning:
             QMessageBox.warning(
                 self, "Process Running",
                 "A command is already running. Please wait for it to finish or abort it.",
             )
-            return
+            return False
+
+        # ---- Elevation gate ----
+        # NicksFix runs unelevated by default; only the handful of tools that
+        # genuinely need Administrator ask for it, and only when clicked.
+        #
+        # This always stops the current call: _offer_elevation either declines,
+        # or starts a *separate* elevated process that will run the command.
+        # Either way this instance must not continue on to execute it.
+        if requires_admin and not is_admin():
+            self._offer_elevation(description)
+            return False
 
         # ---- Layer 1: Information dialog ----
         if not skip_confirm:
@@ -136,7 +162,7 @@ class TerminalConsoleWidget(QWidget):
 
             if reply != QMessageBox.StandardButton.Yes:
                 self._append_output("[CANCELLED] User declined execution.\n", "#f0a500")
-                return
+                return False
 
         # ---- Layer 2: Final confirmation for high-risk commands ----
         if risk_level == "high" and not skip_confirm:
@@ -153,11 +179,54 @@ class TerminalConsoleWidget(QWidget):
             )
             if reply2 != QMessageBox.StandardButton.Yes:
                 self._append_output("[CANCELLED] High-risk execution aborted by user.\n", "#ff5252")
-                return
+                return False
 
         # ---- Execute ----
         self._current_command_key = command_key
         self._run_command(command)
+        return True
+
+    # -------------------------------------------------------------------------
+    # Elevation
+    # -------------------------------------------------------------------------
+
+    def _offer_elevation(self, description: str) -> bool:
+        """
+        Explain that this tool needs Administrator and offer to relaunch.
+
+        Always returns False — even on success, because the elevated instance
+        is a brand new process; this one is shutting down and must not also
+        run the command.
+        """
+        reply = QMessageBox.question(
+            self, "Administrator Required",
+            (
+                f"<b>{description}</b><br><br>"
+                "This tool cannot run without Administrator privileges.<br><br>"
+                "NicksFix runs unelevated so it doesn't prompt for UAC on every "
+                "launch — only tools that genuinely need it, like this one, ask.<br><br>"
+                "Restart NicksFix as Administrator now?"
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            self._append_output(
+                "[BLOCKED] Skipped — this tool requires Administrator privileges.\n",
+                "#f0a500",
+            )
+            return False
+
+        started, message = relaunch_as_admin()
+        self._append_output(f"[*] {message}\n", "#00e5ff")
+        if started:
+            # Hand off to the elevated instance and close this one, so two
+            # copies aren't running against the same machine at once.
+            from PyQt6.QtWidgets import QApplication
+            QApplication.quit()
+        else:
+            QMessageBox.warning(self, "Elevation Failed", message)
+        return False
 
     # -------------------------------------------------------------------------
     # Internal Process Management

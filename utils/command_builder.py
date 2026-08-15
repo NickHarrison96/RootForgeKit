@@ -31,6 +31,34 @@ def ps_encoded_command(script: str) -> str:
     return f"powershell -NoProfile -EncodedCommand {encoded}"
 
 
+# Command keys that genuinely require Administrator. NicksFix launches
+# unelevated (see utils/elevation.py), so these are the only ones that
+# trigger a UAC prompt, and only when the user actually clicks them.
+#
+# Everything NOT in this set was confirmed working unelevated by running it
+# from a non-admin process: disk_health, network_diag, flush_dns, gpu_info,
+# process_list and the Gamer Tools bonus commands all returned real output
+# with exit code 0. Don't add entries here on a hunch — verify first, or the
+# app starts demanding elevation it doesn't need, which is the exact problem
+# this replaced.
+ADMIN_REQUIRED_KEYS = {
+    "sfc_scan",             # sfc /scannow — refuses to run unelevated
+    "wsl2",                 # dism /online /enable-feature — modifies OS features
+    "vcredist",             # winget machine-scope install
+    "dotnet",               # winget machine-scope install
+    "directx",              # winget machine-scope install
+    "system_update",        # winget upgrade --all — machine-scope packages
+    "activate_enterprise",  # slmgr /ipk|/ato — Windows licensing store
+    "activate_pro",         # slmgr /ipk|/ato — Windows licensing store
+    "dism_server_standard", # dism /online /Set-Edition — verified error 740 unelevated
+}
+
+
+def requires_admin(command_key: str) -> bool:
+    """True if this command key needs an elevated process to work."""
+    return command_key in ADMIN_REQUIRED_KEYS
+
+
 class CommandBuilder:
     """
     Resolves platform-specific commands for system tool installations.
@@ -64,6 +92,36 @@ class CommandBuilder:
                     'dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart',
                     "Enable WSL2 and Virtual Machine Platform via DISM",
                     "high",
+                ),
+                # ---- MSYS2 (Unix shell + GCC toolchain + pacman) ----
+                # Package ID confirmed via `winget search msys2` -- MSYS2.MSYS2.
+                "msys2": (
+                    "winget install MSYS2.MSYS2 --accept-source-agreements --accept-package-agreements",
+                    "Install MSYS2 (Unix-like shell, GCC toolchain, pacman package manager)",
+                    "medium",
+                ),
+                # ---- Zadig (USB driver installer GUI) ----
+                # Package ID confirmed via `winget search zadig` -- akeo.ie.Zadig
+                # (publisher: github.com/pbatard, the actual Zadig author).
+                # Zadig is how WinUSB gets attached to a device -- WinUSB itself
+                # ships built into Windows already (winusb.sys is an inbox
+                # driver) and has no installable package of its own, so there
+                # is no separate "winusb" entry here; explained in the
+                # description instead of shipping a command that can't exist.
+                "zadig": (
+                    "winget install akeo.ie.Zadig --accept-source-agreements --accept-package-agreements",
+                    "Install Zadig — binds WinUSB, libusb-win32, or libusbK to a USB device "
+                    "(WinUSB itself ships built into Windows; Zadig is how you attach it to a "
+                    "specific device, e.g. for DFU/bootloader-mode flashing)",
+                    "medium",
+                ),
+                # ---- libusbK (USB driver framework/library) ----
+                # Package ID confirmed via `winget search libusb` -- mcuee.libusbK.
+                "libusbk": (
+                    "winget install mcuee.libusbK --accept-source-agreements --accept-package-agreements",
+                    "Install libusbK — USB driver framework used by libusb-based flashing/"
+                    "diagnostic tools; this is the driver package Zadig can bind to a device",
+                    "medium",
                 ),
                 # ---- Visual C++ Redistributable ----
                 "vcredist": (

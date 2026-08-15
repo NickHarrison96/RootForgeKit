@@ -25,6 +25,24 @@ SERVICE_NAME = "NicksFix"
 DEFAULT_BASE_URL = "http://192.168.1.127:8000"
 REQUEST_TIMEOUT = 6  # seconds — keeps a dead/offline server from freezing the caller
 
+# =============================================================================
+# !!! DEBUG LOGIN BACKDOOR — REMOVE BEFORE ANY PUBLIC RELEASE !!!
+#
+# A hardcoded credential that bypasses the auth server entirely and drops
+# straight into a full-access (admin / diamond) session, even with the server
+# offline. This exists purely to make local development and UI testing quick
+# while the auth server is a moving target in pre-alpha.
+#
+# SECURITY: anyone who reads this source (it ships unobfuscated) gets a
+# permanent admin key that ignores HWID licensing and works offline. This is
+# only acceptable because NicksFix is pre-alpha and unreleased. Flip
+# DEBUG_BYPASS_ENABLED to False (or delete this block and the guard in
+# login()) before the app is distributed to anyone.
+# =============================================================================
+DEBUG_BYPASS_ENABLED = True
+DEBUG_USERNAME = "Debug"
+DEBUG_PASSWORD = "Testing123123!"
+
 
 @dataclass
 class AuthResult:
@@ -105,6 +123,20 @@ class AuthClient:
         return AuthResult(False, "server_error", self._detail(resp))
 
     def login(self, username: str, password: str) -> AuthResult:
+        # ---- DEBUG LOGIN BACKDOOR (see DEBUG_* constants above) ----
+        # Intercept before any network call so it works with the server
+        # offline. role="admin" + tier="diamond" gives full tab access and
+        # bypasses every tier gate (see utils/tiers.has_tier_access). No token
+        # is persisted, so this session does not survive a restart — that's
+        # intentional; a backdoor shouldn't leave a saved-session artifact.
+        if (DEBUG_BYPASS_ENABLED
+                and username == DEBUG_USERNAME
+                and password == DEBUG_PASSWORD):
+            return AuthResult(
+                True, "ok", "Signed in (DEBUG bypass — no server auth).",
+                username=DEBUG_USERNAME, role="admin", tier="diamond",
+            )
+
         try:
             resp = requests.post(
                 f"{self.base_url}/auth/login",

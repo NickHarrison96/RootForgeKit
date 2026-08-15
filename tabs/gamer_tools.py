@@ -15,7 +15,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
 from components.terminal_widget import TerminalConsoleWidget
-from utils.command_builder import CommandBuilder, ps_encoded_command
+from utils.command_builder import CommandBuilder, ps_encoded_command, requires_admin
 from utils.batch_installer import BatchInstallWorker
 from utils.os_logo import get_host_profile
 
@@ -388,6 +388,7 @@ class GamerToolsTab(QWidget):
         self.terminal.execute_command(
             command=command, description=description,
             risk_level=risk_level, command_key=cmd_key,
+            requires_admin=requires_admin(cmd_key),
         )
 
     def _execute_raw(self, command: str, description: str, risk_level: str, os_key: str):
