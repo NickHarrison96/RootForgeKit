@@ -1,60 +1,121 @@
 @echo off
 setlocal enabledelayedexpansion
 :: ============================================================
-:: NicksFix - Windows Bootstrap Launcher
-:: Handles: Python 3.10+ check, .venv, pip sync, launch
+:: NixFix - Windows Bootstrap Launcher
+:: Handles: C++ Build Tools check, Python 3.13 (MS Store) check,
+::          .venv creation, pip sync, and launch.
 ::
-:: VERBOSE BY DESIGN: every step below narrates what it's doing and
-:: what it found (paths, versions, hashes, candidates tried) instead
-:: of only speaking up on failure. This is deliberate -- a tester
-:: reporting "it didn't work" is far more useful to debug when the
-:: window in front of them already shows exactly which Python was
-:: picked, which venv path was used, and what the hash comparison
-:: decided, rather than nothing but silence until an [ERROR] line.
+:: PREREQUISITES (fresh Windows install):
+::   1. Python 3.13  -- from the Microsoft Store ONLY
+::      Search "Python 3.13" in the Store and install it.
+::      Do NOT use the App Execution Alias stubs -- they open
+::      the Store rather than run Python.  The real interpreter
+::      ends up at:
+::        %LOCALAPPDATA%\Microsoft\WindowsApps\python3.13.exe
+::      or under %LOCALAPPDATA%\Programs\Python\Python313\.
+::      This script probes both locations automatically.
+::
+::   2. Microsoft C++ Build Tools  (for compiling native wheels)
+::      The script detects whether they are present and attempts
+::      a silent install via winget if they are missing.
+::      Manual download fallback:
+::        https://visualstudio.microsoft.com/visual-cpp-build-tools/
+::
+::   3. WSL + MSYS2/MINGW64 (build-time only, for native deps)
+::      These are only needed while pip is compiling extensions.
+::      They are NOT required at app runtime.
+::
+:: VERBOSE BY DESIGN: every step narrates exactly what it found
+:: (paths, versions, candidates tried) rather than staying silent
+:: until a failure.  This is deliberate -- a user reporting "it
+:: didn't work" is far easier to diagnose when the console already
+:: shows which Python was picked, which venv path was chosen, and
+:: what each check decided.
 ::
 :: ELEVATION: this launcher does NOT request Administrator, on
-:: purpose. NicksFix runs unelevated (see utils/elevation.py) so
-:: it doesn't fire a UAC prompt on every single launch -- the
-:: ~90% of sessions that never touch an admin-only tool shouldn't
-:: pay for the few that do. The handful of tools that genuinely
-:: need admin (SFC, DISM, machine-scope winget, Windows
-:: activation) offer to relaunch elevated at the moment they're
-:: clicked, via components/terminal_widget.py. Do not "helpfully"
-:: add a `runas` relaunch here -- it re-breaks that whole design
-:: and brings back the UAC-on-every-launch friction.
+:: purpose.  NixFix runs unelevated (see utils/elevation.py) so
+:: it doesn't fire a UAC prompt on every launch.  The few tools
+:: that need admin (SFC, DISM, machine-scope winget, Windows
+:: activation) offer to relaunch elevated at the moment they are
+:: clicked, via components/terminal_widget.py.  Do not add a
+:: `runas` relaunch here -- it re-breaks that whole design.
 ::
-:: NOTE: this script runs with DELAYED EXPANSION enabled, so any
-:: variable that is both SET and READ inside the same ( ) block
-:: must use !VAR! and not %VAR%. Batch expands %VAR% once, when it
-:: parses the whole block -- so a %VAR% read inside a block sees
-:: the value from BEFORE the block ran. That exact mistake made
-:: this script silently skip installing dependencies no matter
-:: what the user typed. Do not "simplify" !VAR! back to %VAR%.
+:: NOTE: DELAYED EXPANSION is enabled throughout.  Any variable
+:: that is both SET and READ inside the same ( ) block must use
+:: !VAR! not %VAR%.  Batch expands %VAR% once when it parses the
+:: whole block -- so %VAR% inside a block always sees the value
+:: from BEFORE the block ran.  Do not "simplify" !VAR! to %VAR%.
 :: ============================================================
-title NicksFix Launcher
+title NixFix Launcher
 color 0A
 
 echo ============================================================
-echo   NicksFix Launcher
+echo   NixFix Launcher
 echo ============================================================
 
-:: Always operate on the folder this script lives in, never the
-:: caller's current directory, so every relative path below is
-:: resolved against the project folder regardless of how the
-:: script was started.
+:: Always operate on the folder this script lives in.
 cd /d "%~dp0"
 echo [i] Working directory: %CD%
 
-:: Sentinel module used to prove dependencies are actually usable,
-:: not just that pip reported success at some point in the past.
+:: Sentinel module used to prove the venv is actually usable.
 set "SENTINEL_IMPORT=PyQt6"
 
-:: ---- Step 1: Sanity-check we are actually in the project folder ----
+:: ---- Step 0: Check for Microsoft C++ Build Tools ----
+:: pymobiledevice3 (and potentially other deps) compile native C
+:: extensions via pip.  Without cl.exe those wheels fail to build.
+:: vswhere.exe ships with every VS / Build Tools install and lives
+:: at a fixed path regardless of which VS edition is present.
+echo.
+echo [STEP 0/5] Checking for Microsoft C++ Build Tools...
+call :check_cpp_build_tools
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Microsoft C++ Build Tools are required but could not be
+    echo         installed automatically.
+    echo.
+    echo   Download from:
+    echo     https://visualstudio.microsoft.com/visual-cpp-build-tools/
+    echo.
+    echo   In the installer, select:
+    echo     "Desktop development with C++"
+    echo.
+    echo   Then re-run start.bat.
+    echo.
+    pause
+    exit /b 1
+)
+
+:: ---- Step 0b: Attempt to ensure Python 3.13 is installed via winget ----
+:: This is a best-effort pre-install that runs before the Python probe so
+:: that the user doesn't have to manually go to the MS Store on a fresh
+:: machine.  If winget is unavailable, or if Python 3.13 is already present,
+:: this block exits cleanly and the normal Step 2 probe takes over.
+echo.
+echo [STEP 0b/5] Ensuring Python 3.13 is installed (winget)...
+winget --version >nul 2>&1
+if errorlevel 1 (
+    echo [i] winget not available - skipping auto-install of Python 3.13.
+    echo     Install Python 3.13 manually from the Microsoft Store if needed.
+) else (
+    for /f "tokens=*" %%v in ('winget --version 2^>^&1') do set "WINGET_VER=%%v"
+    echo [i] winget !WINGET_VER! found - running: winget install Python.Python.3.13
+    winget install --id Python.Python.3.13 -e --accept-package-agreements --accept-source-agreements
+    if errorlevel 1 (
+        echo [i] winget install exited non-zero ^(already installed, or transient error^).
+        echo     Continuing - Step 2 will probe for a usable interpreter.
+    ) else (
+        echo [OK] winget reported Python 3.13 installed ^(or already present^).
+        :: Refresh PATH so this session can see the newly installed python.exe
+        for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "[System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')"`) do set "PATH=%%p"
+    )
+)
+
+:: ---- Step 1: Sanity-check we are in the project folder ----
 echo.
 echo [STEP 1/5] Checking project folder...
 if not exist "main.py" (
     echo [ERROR] main.py not found in "%CD%".
-    echo         Keep start.bat inside the NicksFix project folder.
+    echo         Keep start.bat inside the NixFix project folder.
     pause
     exit /b 1
 )
@@ -68,40 +129,46 @@ if not exist "requirements.txt" (
 echo [i] Found requirements.txt
 echo [OK] Project folder looks correct.
 
-:: ---- Step 2: Locate a usable Python 3.10+ ----
-:: Each candidate is VALIDATED by actually running it, rather than
-:: trusting `where`. On a fresh Windows install `where python`
-:: succeeds even with no Python installed, because Windows ships an
-:: App Execution Alias stub that just opens the Microsoft Store --
-:: it resolves on PATH, then fails to execute anything.
+:: ---- Step 2: Locate a usable Python 3.13 ----
+:: Probe order:
+::   py -3.13        -- Python Launcher for Windows (covers Store installs)
+::   py -3           -- any 3.x via launcher
+::   python / python3 -- PATH-based
+::   WindowsApps     -- Store Python's real exe location
+::   Program Files   -- standard user/system install paths
+::
+:: The Microsoft Store app execution alias stubs (python.exe /
+:: python3.exe in %LOCALAPPDATA%\Microsoft\WindowsApps) look like
+:: real executables on PATH but open the Store when run.
+:: :try_python catches these by actually running python -c "print(1)"
+:: and checking the exit code; the stubs exit non-zero.
 echo.
-echo [STEP 2/5] Locating Python 3.10+...
+echo [STEP 2/5] Locating Python 3.13+...
 set "PYTHON_CMD="
-call :try_python "py -3"
+call :try_python "py -3.13"
+if not defined PYTHON_CMD call :try_python "py -3"
 if not defined PYTHON_CMD call :try_python "python"
 if not defined PYTHON_CMD call :try_python "python3"
 
-:: On a genuinely fresh machine (no Python at all) this is what makes the
-:: whole thing "just work" in one launch instead of sending the user to a
-:: browser: Windows 11 ships winget in-box, so use it to install Python
-:: silently and pick straight back up, rather than stopping here.
 if not defined PYTHON_CMD (
-    echo [i] No usable Python found on PATH.
-    call :try_auto_install_python
+    echo [i] No usable Python found via PATH or launcher - scanning disk...
+    call :find_python_on_disk
 )
 
 if not defined PYTHON_CMD (
     echo.
-    echo [ERROR] No working Python 3.10+ installation was found, and automatic
-    echo         setup could not install one.
+    echo [ERROR] Python 3.13 was not found on this machine.
     echo.
-    echo   Install Python from:  https://www.python.org/downloads/
-    echo   IMPORTANT: tick "Add python.exe to PATH" in the installer.
+    echo   This app requires Python 3.13 from the Microsoft Store.
     echo.
-    echo   If you installed Python from the Microsoft Store and still
-    echo   see this, open Settings ^> Apps ^> Advanced app settings ^>
-    echo   App execution aliases and turn OFF the python.exe aliases,
-    echo   then install from python.org instead.
+    echo   HOW TO INSTALL:
+    echo     1. Open the Microsoft Store
+    echo     2. Search for "Python 3.13"
+    echo     3. Install the official app by Python Software Foundation
+    echo     4. Re-run start.bat
+    echo.
+    echo   NOTE: Do NOT install Python from python.org on this machine.
+    echo   The Store version is required for compatibility.
     echo.
     pause
     exit /b 1
@@ -156,10 +223,6 @@ echo [OK] Virtual environment ready. ^(!VENV_PY_VER!^)
 ::   1. requirements.txt changed since the last successful install
 ::   2. the sentinel package does not import (fresh venv, failed or
 ::      partial install, someone deleted site-packages, etc.)
-:: No Y/N prompt: a tester answering "n" -- or just pressing Enter --
-:: previously produced an app that launches straight into an
-:: ImportError. Installing is the only correct action when deps are
-:: missing, so it is not phrased as a question.
 echo.
 echo [STEP 4/5] Checking dependencies...
 set "REQ_HASH_FILE=.venv\requirements.hash"
@@ -201,6 +264,8 @@ if "!DEPS_OK!"=="1" (
     echo.
     echo [*] Installing Python dependencies...
     echo     First run downloads ~100 MB and can take several minutes.
+    echo     Some packages compile native C extensions -- this requires
+    echo     the C++ Build Tools checked in Step 0.
     echo     Leave this window open until it finishes.
     echo.
     "!VENV_PY!" -m pip install --upgrade pip
@@ -212,11 +277,25 @@ if "!DEPS_OK!"=="1" (
     if errorlevel 1 (
         echo.
         echo [ERROR] Dependency installation failed.
-        echo         Check your internet connection and run start.bat again.
+        echo.
+        echo   Common causes on a fresh Windows install:
+        echo     - C++ Build Tools missing  ^(Step 0 should have caught this^)
+        echo     - No internet connection
+        echo     - Pip tried to compile a wheel without MSYS2/MINGW64
+        echo.
+        echo   If the error mentions a compiler or cl.exe:
+        echo     Install Microsoft C++ Build Tools from:
+        echo       https://visualstudio.microsoft.com/visual-cpp-build-tools/
+        echo     Select "Desktop development with C++" in the installer.
+        echo.
+        echo   If the error mentions MSYS2 or a unix tool:
+        echo     Install MSYS2 from https://www.msys2.org/
+        echo     Then open MSYS2 MINGW64 and run: pacman -Syu
+        echo.
         pause
         exit /b 1
     )
-    > "!REQ_HASH_FILE!" echo !NEW_HASH!
+    >"!REQ_HASH_FILE!" echo !NEW_HASH!
     echo [i] Recorded new requirements hash to "!REQ_HASH_FILE!".
     echo [OK] Dependencies installed.
     echo.
@@ -239,43 +318,185 @@ if errorlevel 1 (
 )
 echo [OK] !SENTINEL_IMPORT! import verified.
 
-:: ---- Step 5: Launch NicksFix (unelevated - see header) ----
+:: ---- Step 5: Launch NixFix (unelevated - see header) ----
 echo.
-echo [STEP 5/5] Launching NicksFix...
+echo [STEP 5/5] Launching NixFix...
 echo [i] Command: "!VENV_PY_ABS!" main.py
 echo ============================================================
-echo   Launching NicksFix...
+echo   Launching NixFix...
 echo ============================================================
 echo.
 "!VENV_PY!" main.py
 set "APP_EXIT=%errorlevel%"
 echo.
-echo [i] NicksFix exited with code !APP_EXIT!.
+echo [i] NixFix exited with code !APP_EXIT!.
 if not "!APP_EXIT!"=="0" (
-    echo [ERROR] NicksFix exited with an error.
+    echo [ERROR] NixFix exited with an error.
     pause
 )
 exit /b 0
 
 :: ============================================================
+:: :check_cpp_build_tools
+:: Detects Microsoft C++ Build Tools by probing vswhere.exe,
+:: which ships at a fixed path with every VS / Build Tools
+:: install.  If cl.exe is found, exits 0 (all good).
+:: If missing, attempts a silent winget install of
+:: Microsoft.VisualStudio.2022.BuildTools with the
+:: "Desktop development with C++" workload, then re-probes.
+:: Exits 0 on success, 1 if tools still can't be found.
+:: ============================================================
+:check_cpp_build_tools
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if not exist "!VSWHERE!" set "VSWHERE=%ProgramFiles%\Microsoft Visual Studio\Installer\vswhere.exe"
+
+set "CL_FOUND=0"
+if exist "!VSWHERE!" (
+    echo [i] vswhere.exe found at: !VSWHERE!
+    for /f "usebackq tokens=*" %%p in (`"!VSWHERE!" -latest -requires Microsoft.VisualCpp.Tools.HostX64.TargetX64 -find "VC\Tools\MSVC\**\bin\Hostx64\x64\cl.exe" 2^>nul`) do (
+        if not defined CL_PATH set "CL_PATH=%%p"
+    )
+    if defined CL_PATH (
+        set "CL_FOUND=1"
+        echo [OK] C++ Build Tools found: !CL_PATH!
+    ) else (
+        echo [i] vswhere found no C++ compiler ^(cl.exe not present^).
+    )
+) else (
+    echo [i] vswhere.exe not found - Build Tools have likely never been installed.
+)
+
+if "!CL_FOUND!"=="1" exit /b 0
+
+:: --- Build Tools not found: try winget ---
+echo.
+echo [*] C++ Build Tools not found. Attempting silent install via winget...
+echo     This is a large download (~3-5 GB) and may take 10-20 minutes.
+echo     Leave this window open.
+echo.
+
+winget --version >nul 2>&1
+if errorlevel 1 (
+    echo [i] winget is not available. Cannot auto-install Build Tools.
+    exit /b 1
+)
+
+for /f "tokens=*" %%v in ('winget --version 2^>^&1') do set "WINGET_VER=%%v"
+echo [i] winget !WINGET_VER! detected.
+
+winget install --id Microsoft.VisualStudio.2022.BuildTools ^
+    -e ^
+    --accept-package-agreements ^
+    --accept-source-agreements ^
+    --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+
+if errorlevel 1 (
+    echo [i] winget reported an error installing Build Tools.
+    exit /b 1
+)
+
+echo [OK] winget reported Build Tools installed. Re-checking for cl.exe...
+
+:: Re-probe after install
+set "CL_PATH="
+set "CL_FOUND=0"
+if exist "!VSWHERE!" (
+    for /f "usebackq tokens=*" %%p in (`"!VSWHERE!" -latest -requires Microsoft.VisualCpp.Tools.HostX64.TargetX64 -find "VC\Tools\MSVC\**\bin\Hostx64\x64\cl.exe" 2^>nul`) do (
+        if not defined CL_PATH set "CL_PATH=%%p"
+    )
+    if defined CL_PATH (
+        set "CL_FOUND=1"
+        echo [OK] cl.exe confirmed at: !CL_PATH!
+    )
+)
+
+if "!CL_FOUND!"=="1" (exit /b 0) else (
+    echo.
+    echo [!] cl.exe still not found after winget install.
+    echo     This usually means Visual Studio Build Tools are registered as
+    echo     installed but the C++ workload ^(VCTools^) is missing or broken.
+    echo.
+    echo     winget said "already installed" -- a clean uninstall + reinstall
+    echo     will pull the full VCTools workload and fix this.
+    echo.
+    set /p "RETRY_CLEAN=  Clear residual Build Tools files and retry install? [Y/N]: "
+    if /i "!RETRY_CLEAN!"=="Y" (
+        echo.
+        echo [*] Uninstalling existing Visual Studio Build Tools entry...
+        winget uninstall --id Microsoft.VisualStudio.2022.BuildTools -e --accept-source-agreements >nul 2>&1
+        echo [i] Uninstall command finished ^(exit ignored -- may not have been installed via winget^).
+
+        echo [*] Clearing VS installer package cache...
+        :: The package cache is what makes winget report "already installed"
+        :: even after the component files have been removed or were never
+        :: fully written.  Deleting it lets the next winget install treat
+        :: this as a fresh install and lay down all workload files cleanly.
+        set "VS_CACHE=%ProgramData%\Microsoft\VisualStudio\Packages"
+        if exist "!VS_CACHE!" (
+            echo [i] Removing: !VS_CACHE!
+            rmdir /s /q "!VS_CACHE!" >nul 2>&1
+            echo [i] Cache cleared.
+        ) else (
+            echo [i] Cache folder not found -- nothing to clear.
+        )
+
+        echo.
+        echo [*] Retrying clean install of Build Tools + VCTools workload...
+        echo     This is a large download ^(~3-5 GB^) and may take 10-20 minutes.
+        echo     Leave this window open.
+        echo.
+        winget install --id Microsoft.VisualStudio.2022.BuildTools ^
+            -e ^
+            --accept-package-agreements ^
+            --accept-source-agreements ^
+            --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+        if errorlevel 1 (
+            echo [i] winget retry also reported an error.
+        ) else (
+            echo [OK] winget retry completed. Re-checking for cl.exe...
+        )
+
+        :: Final probe after retry
+        set "CL_PATH="
+        set "CL_FOUND=0"
+        if exist "!VSWHERE!" (
+            for /f "usebackq tokens=*" %%p in (`"!VSWHERE!" -latest -requires Microsoft.VisualCpp.Tools.HostX64.TargetX64 -find "VC\Tools\MSVC\**\bin\Hostx64\x64\cl.exe" 2^>nul`) do (
+                if not defined CL_PATH set "CL_PATH=%%p"
+            )
+            if defined CL_PATH (
+                set "CL_FOUND=1"
+                echo [OK] cl.exe confirmed at: !CL_PATH!
+            ) else (
+                echo [i] cl.exe still not found after retry.
+            )
+        )
+        if "!CL_FOUND!"=="1" (exit /b 0) else (exit /b 1)
+    ) else (
+        echo [i] Skipping cleanup - exiting for manual install.
+        exit /b 1
+    )
+)
+
+:: ============================================================
 :: :try_python  "<command>"
-:: Sets PYTHON_CMD if the candidate runs AND is version 3.10+.
-:: Validating by execution is what catches the Microsoft Store
-:: alias stub, Python 2, and broken PATH entries. Narrates every
-:: candidate it tries and why it was accepted or rejected.
+:: Sets PYTHON_CMD if the candidate runs AND is version 3.13+.
+:: Validates by actually executing -- this is what catches the
+:: Microsoft Store alias stubs, Python 2, and broken PATH entries.
+:: The Store alias stubs resolve on PATH but exit non-zero when
+:: actually run, so the errorlevel check weeds them out.
 :: ============================================================
 :try_python
 set "CANDIDATE=%~1"
 echo [i] Trying "!CANDIDATE!" ...
 %CANDIDATE% -c "print(1)" >nul 2>&1
 if errorlevel 1 (
-    echo      not found / not runnable ^(likely missing, or a Microsoft Store alias stub^).
+    echo      not found / not runnable ^(or a Microsoft Store alias stub^).
     exit /b 1
 )
 for /f "tokens=*" %%v in ('%CANDIDATE% --version 2^>^&1') do set "CANDIDATE_VER=%%v"
-%CANDIDATE% -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" >nul 2>&1
+%CANDIDATE% -c "import sys; sys.exit(0 if sys.version_info >= (3,13) else 1)" >nul 2>&1
 if errorlevel 1 (
-    echo      found !CANDIDATE_VER!, but 3.10+ is required - skipping.
+    echo      found !CANDIDATE_VER!, but 3.13+ is required - skipping.
     exit /b 1
 )
 echo      found !CANDIDATE_VER! - using this one.
@@ -283,132 +504,50 @@ set "PYTHON_CMD=%~1"
 exit /b 0
 
 :: ============================================================
-:: :try_auto_install_python
-:: Fresh-machine bootstrap: no usable Python was found, so install
-:: one and keep going -- no "go download Python and re-run me".
-::
-:: WHY PrependPath=1 IS NOT OPTIONAL: the python.org installer does
-:: NOT put python.exe on PATH unless explicitly told to, and the
-:: winget manifest for Python.Python.3.12 declares no installer
-:: switches of its own (confirmed with `winget show`). So a plain
-:: `winget install Python.Python.3.12` genuinely succeeds and still
-:: leaves PATH untouched -- which is exactly the failure seen on a
-:: fresh Win11 VM: "[OK] installed via winget" immediately followed
-:: by "still cannot be found".
-::
-:: WHY --override AND NOT --custom: a brand-new Windows 11 image
-:: ships winget 1.2, which has no --custom flag at all -- it dies
-:: with "Argument name was not recognized for the current command:
-:: '--custom'" and installs nothing. --override exists in both 1.2
-:: and current winget, so it is the portable choice. The catch is
-:: that --override REPLACES the installer's argument string instead
-:: of appending to it, so /quiet has to be included explicitly; it
-:: is NOT implied the way it is with --silent. Do not "modernize"
-:: this to --custom -- that breaks the exact fresh-install case this
-:: whole routine exists for.
-::
-:: THREE INDEPENDENT LAYERS, because any one of them can fail on a
-:: machine we can't see:
-::   1. install with PrependPath=1 (fixes PATH at the source)
-::   2. re-read PATH from the registry, since an installer cannot
-::      update THIS already-running process's environment block
-::   3. if it's still not on PATH, look for python.exe directly in
-::      the standard install folders, then persist that folder to
-::      the user PATH ourselves
-:: Layer 3 is the one that makes this robust: it does not care
-:: whether the installer, winget, or the registry cooperated.
-::
-:: If winget is missing or fails outright, fall back to downloading
-:: the official installer from python.org and running it with the
-:: same flags. Old Win11 images ship winget 1.2, which is why we
-:: stick to long-supported flags (-e, --silent, --custom,
-:: --accept-*) and never assume a modern winget.
-::
-:: Never sets PYTHON_CMD on failure -- the caller's manual-install
-:: error message stays the last resort, so a machine that already
-:: has Python is completely unaffected by any of this.
-:: ============================================================
-:try_auto_install_python
-set "PY_SERIES=3.12"
-set "PY_FULL=3.12.10"
-
-winget --version >nul 2>&1
-if errorlevel 1 (
-    echo [i] winget is not available on this machine.
-    goto :py_direct_download
-)
-for /f "tokens=*" %%v in ('winget --version 2^>^&1') do set "WINGET_VER=%%v"
-echo [*] winget !WINGET_VER! found - installing Python !PY_SERIES! automatically...
-echo     One-time setup on a fresh machine; may take a minute or two.
-echo.
-:: Attempt 1: install AND put it on PATH in one shot.
-winget install --id Python.Python.!PY_SERIES! -e --accept-package-agreements --accept-source-agreements --override "/quiet InstallAllUsers=0 PrependPath=1 Include_launcher=1 Include_pip=1"
-if not errorlevel 1 goto :py_winget_done
-
-:: Attempt 2: plain install, no installer arguments at all. Even with
-:: nothing done about PATH, this still puts python.exe ON DISK -- and
-:: the folder scan further down finds it there and fixes PATH itself.
-:: Getting Python installed by any means is what matters here; the
-:: PATH problem is recoverable afterwards, a missing Python is not.
-echo.
-echo [i] Install with PATH arguments did not succeed - retrying a plain install...
-winget install --id Python.Python.!PY_SERIES! -e --silent --accept-package-agreements --accept-source-agreements
-if errorlevel 1 (
-    echo [i] winget could not install Python - falling back to a direct download.
-    goto :py_direct_download
-)
-
-:py_winget_done
-echo [OK] winget reported Python !PY_SERIES! installed.
-goto :py_after_install
-
-:py_direct_download
-echo.
-echo [*] Downloading the official Python !PY_FULL! installer from python.org...
-set "PY_DL=%TEMP%\nicksfix-python-setup.exe"
-set "PY_DL_URL=https://www.python.org/ftp/python/!PY_FULL!/python-!PY_FULL!-amd64.exe"
-:: TLS 1.2 is forced because Windows PowerShell 5.1 does not always
-:: negotiate it by default, and python.org refuses anything older.
-powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri $env:PY_DL_URL -OutFile $env:PY_DL"
-if not exist "!PY_DL!" (
-    echo [i] Could not download the Python installer ^(no internet connection?^).
-    exit /b 1
-)
-echo [*] Running the Python installer silently ^(this adds it to PATH^)...
-"!PY_DL!" /quiet InstallAllUsers=0 PrependPath=1 Include_launcher=1 Include_pip=1
-echo [i] Python installer exited with code !errorlevel!.
-del "!PY_DL!" >nul 2>&1
-
-:py_after_install
-echo [*] Refreshing this session's PATH so the new install is visible...
-for /f "usebackq delims=" %%p in (`powershell -NoProfile -Command "[System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')"`) do set "PATH=%%p"
-
-call :try_python "py -3"
-if not defined PYTHON_CMD call :try_python "python"
-if not defined PYTHON_CMD call :try_python "python3"
-if defined PYTHON_CMD exit /b 0
-
-echo [i] Still not on PATH - searching the standard install folders directly...
-call :find_python_on_disk
-if not defined PYTHON_CMD (
-    echo [i] Python still could not be located after installing.
-    exit /b 1
-)
-exit /b 0
-
-:: ============================================================
 :: :find_python_on_disk
-:: Last-resort locator: ignore PATH entirely and look where the
-:: python.org installer actually puts things. This is what saves the
-:: run when an installer silently declines to touch PATH.
-:: Sets PYTHON_CMD (and persists the folder to the user PATH).
+:: Last-resort locator: ignores PATH entirely and scans the
+:: known install locations for the MS Store Python and the
+:: standard python.org user/system install paths.
+::
+:: MS Store Python 3.13 real executable locations:
+::   %LOCALAPPDATA%\Microsoft\WindowsApps\python3.13.exe
+::     -- the "app alias" that actually works (distinct from the
+::        stub python.exe / python3.exe in the same folder)
+::   %LOCALAPPDATA%\Programs\Python\Python313\python.exe
+::     -- where the Store installer copies the real binaries
+::
+:: The 8.3 short path (%%~sF) is used so the resulting command
+:: has no spaces, keeping every later `for /f` and direct
+:: invocation free of quoting problems (e.g. C:\Program Files).
+:: Keeps the LAST match, so a higher Python3xx folder wins.
 :: ============================================================
 :find_python_on_disk
 set "FOUND_PY="
 set "FOUND_DIR="
-for /d %%D in ("%LOCALAPPDATA%\Programs\Python\Python3*") do call :consider_python_dir "%%D"
-for /d %%D in ("%ProgramFiles%\Python3*")                 do call :consider_python_dir "%%D"
-for /d %%D in ("C:\Python3*")                             do call :consider_python_dir "%%D"
+
+:: MS Store Python 3.13 -- the named alias exe that actually runs
+set "STORE_ALIAS=%LOCALAPPDATA%\Microsoft\WindowsApps\python3.13.exe"
+echo [i] Checking MS Store alias: !STORE_ALIAS!
+if exist "!STORE_ALIAS!" (
+    "!STORE_ALIAS!" -c "print(1)" >nul 2>&1
+    if not errorlevel 1 (
+        "!STORE_ALIAS!" -c "import sys; sys.exit(0 if sys.version_info >= (3,13) else 1)" >nul 2>&1
+        if not errorlevel 1 (
+            for %%F in ("!STORE_ALIAS!") do set "FOUND_PY=%%~sF"
+            set "FOUND_DIR=%LOCALAPPDATA%\Microsoft\WindowsApps"
+            echo      [OK] MS Store python3.13.exe alias is functional.
+        )
+    ) else (
+        echo      MS Store python3.13.exe alias exists but is a non-functional stub.
+    )
+)
+
+:: Standard user install path (Store and python.org both use this)
+for /d %%D in ("%LOCALAPPDATA%\Programs\Python\Python313*") do call :consider_python_dir "%%D"
+for /d %%D in ("%LOCALAPPDATA%\Programs\Python\Python3*")   do call :consider_python_dir "%%D"
+for /d %%D in ("%ProgramFiles%\Python3*")                   do call :consider_python_dir "%%D"
+for /d %%D in ("C:\Python3*")                               do call :consider_python_dir "%%D"
+
 if not defined FOUND_PY exit /b 1
 set "PYTHON_CMD=!FOUND_PY!"
 echo [OK] Located Python at: !FOUND_DIR!
@@ -426,7 +565,7 @@ exit /b 0
 set "CAND_DIR=%~1"
 if not exist "!CAND_DIR!\python.exe" exit /b 0
 for %%F in ("!CAND_DIR!\python.exe") do set "CAND_EXE=%%~sF"
-!CAND_EXE! -c "import sys; sys.exit(0 if sys.version_info >= (3,10) else 1)" >nul 2>&1
+!CAND_EXE! -c "import sys; sys.exit(0 if sys.version_info >= (3,13) else 1)" >nul 2>&1
 if errorlevel 1 exit /b 0
 for /f "tokens=*" %%v in ('!CAND_EXE! --version 2^>^&1') do set "CAND_VER=%%v"
 echo      candidate: !CAND_DIR!  ^(!CAND_VER!^)
