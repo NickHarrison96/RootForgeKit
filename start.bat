@@ -2,49 +2,35 @@
 setlocal enabledelayedexpansion
 :: ============================================================
 :: NixFix - Windows Bootstrap Launcher
-:: Handles: C++ Build Tools check, Python 3.13 (MS Store) check,
-::          .venv creation, pip sync, and launch.
+:: Handles: Python 3.13 check, .venv creation, pip sync, launch
 ::
 :: PREREQUISITES (fresh Windows install):
-::   1. Python 3.13  -- from the Microsoft Store ONLY
-::      Search "Python 3.13" in the Store and install it.
-::      Do NOT use the App Execution Alias stubs -- they open
-::      the Store rather than run Python.  The real interpreter
-::      ends up at:
-::        %LOCALAPPDATA%\Microsoft\WindowsApps\python3.13.exe
-::      or under %LOCALAPPDATA%\Programs\Python\Python313\.
-::      This script probes both locations automatically.
+::   1. Python 3.13  -- from the Microsoft Store or via winget
+::      This script will attempt to install it automatically via
+::      winget (Step 0b).  If that fails, install manually:
+::        Microsoft Store -> search "Python 3.13" (by PSF)
+::        OR: winget install Python.Python.3.13
 ::
 ::   2. Microsoft C++ Build Tools  (for compiling native wheels)
-::      The script detects whether they are present and attempts
-::      a silent install via winget if they are missing.
-::      Manual download fallback:
+::      If pip install fails with a compiler error, install from:
 ::        https://visualstudio.microsoft.com/visual-cpp-build-tools/
+::      Select "Desktop development with C++" in the installer.
 ::
-::   3. WSL + MSYS2/MINGW64 (build-time only, for native deps)
-::      These are only needed while pip is compiling extensions.
-::      They are NOT required at app runtime.
+::   3. MSYS2/MINGW64 (build-time only, if a dep needs unix tools)
+::      Install from https://www.msys2.org/ if pip mentions it.
+::      Not required at app runtime.
 ::
-:: VERBOSE BY DESIGN: every step narrates exactly what it found
-:: (paths, versions, candidates tried) rather than staying silent
-:: until a failure.  This is deliberate -- a user reporting "it
-:: didn't work" is far easier to diagnose when the console already
-:: shows which Python was picked, which venv path was chosen, and
-:: what each check decided.
+:: VERBOSE BY DESIGN: every step narrates what it found (paths,
+:: versions, candidates tried) so a "it didn't work" report
+:: already shows exactly what was tried and why it was rejected.
 ::
-:: ELEVATION: this launcher does NOT request Administrator, on
-:: purpose.  NixFix runs unelevated (see utils/elevation.py) so
-:: it doesn't fire a UAC prompt on every launch.  The few tools
-:: that need admin (SFC, DISM, machine-scope winget, Windows
-:: activation) offer to relaunch elevated at the moment they are
-:: clicked, via components/terminal_widget.py.  Do not add a
-:: `runas` relaunch here -- it re-breaks that whole design.
+:: ELEVATION: this launcher does NOT request Administrator.
+:: NixFix runs unelevated (see utils/elevation.py) -- tools that
+:: genuinely need admin relaunch themselves at click time via
+:: components/terminal_widget.py.  Do not add a `runas` here.
 ::
-:: NOTE: DELAYED EXPANSION is enabled throughout.  Any variable
-:: that is both SET and READ inside the same ( ) block must use
-:: !VAR! not %VAR%.  Batch expands %VAR% once when it parses the
-:: whole block -- so %VAR% inside a block always sees the value
-:: from BEFORE the block ran.  Do not "simplify" !VAR! to %VAR%.
+:: NOTE: DELAYED EXPANSION is enabled.  Variables SET and READ
+:: inside the same ( ) block must use !VAR! not %VAR%.
 :: ============================================================
 title NixFix Launcher
 color 0A
@@ -53,43 +39,14 @@ echo ============================================================
 echo   NixFix Launcher
 echo ============================================================
 
-:: Always operate on the folder this script lives in.
 cd /d "%~dp0"
 echo [i] Working directory: %CD%
 
-:: Sentinel module used to prove the venv is actually usable.
 set "SENTINEL_IMPORT=PyQt6"
 
-:: ---- Step 0: Check for Microsoft C++ Build Tools ----
-:: pymobiledevice3 (and potentially other deps) compile native C
-:: extensions via pip.  Without cl.exe those wheels fail to build.
-:: vswhere.exe ships with every VS / Build Tools install and lives
-:: at a fixed path regardless of which VS edition is present.
-echo.
-echo [STEP 0/5] Checking for Microsoft C++ Build Tools...
-call :check_cpp_build_tools
-if errorlevel 1 (
-    echo.
-    echo [ERROR] Microsoft C++ Build Tools are required but could not be
-    echo         installed automatically.
-    echo.
-    echo   Download from:
-    echo     https://visualstudio.microsoft.com/visual-cpp-build-tools/
-    echo.
-    echo   In the installer, select:
-    echo     "Desktop development with C++"
-    echo.
-    echo   Then re-run start.bat.
-    echo.
-    pause
-    exit /b 1
-)
-
 :: ---- Step 0b: Attempt to ensure Python 3.13 is installed via winget ----
-:: This is a best-effort pre-install that runs before the Python probe so
-:: that the user doesn't have to manually go to the MS Store on a fresh
-:: machine.  If winget is unavailable, or if Python 3.13 is already present,
-:: this block exits cleanly and the normal Step 2 probe takes over.
+:: Best-effort pre-install before the Python probe.  If winget is
+:: unavailable or Python is already present this block is a no-op.
 echo.
 echo [STEP 0b/5] Ensuring Python 3.13 is installed (winget)...
 winget --version >nul 2>&1
@@ -264,8 +221,8 @@ if "!DEPS_OK!"=="1" (
     echo.
     echo [*] Installing Python dependencies...
     echo     First run downloads ~100 MB and can take several minutes.
-    echo     Some packages compile native C extensions -- this requires
-    echo     the C++ Build Tools checked in Step 0.
+    echo     Some packages compile native C extensions -- Microsoft C++
+    echo     Build Tools are required if any wheel needs to compile.
     echo     Leave this window open until it finishes.
     echo.
     "!VENV_PY!" -m pip install --upgrade pip
@@ -279,7 +236,7 @@ if "!DEPS_OK!"=="1" (
         echo [ERROR] Dependency installation failed.
         echo.
         echo   Common causes on a fresh Windows install:
-        echo     - C++ Build Tools missing  ^(Step 0 should have caught this^)
+        echo     - C++ Build Tools missing
         echo     - No internet connection
         echo     - Pip tried to compile a wheel without MSYS2/MINGW64
         echo.
@@ -335,147 +292,6 @@ if not "!APP_EXIT!"=="0" (
     pause
 )
 exit /b 0
-
-:: ============================================================
-:: :check_cpp_build_tools
-:: Detects Microsoft C++ Build Tools by probing vswhere.exe,
-:: which ships at a fixed path with every VS / Build Tools
-:: install.  If cl.exe is found, exits 0 (all good).
-:: If missing, attempts a silent winget install of
-:: Microsoft.VisualStudio.2022.BuildTools with the
-:: "Desktop development with C++" workload, then re-probes.
-:: Exits 0 on success, 1 if tools still can't be found.
-:: ============================================================
-:check_cpp_build_tools
-set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
-if not exist "!VSWHERE!" set "VSWHERE=%ProgramFiles%\Microsoft Visual Studio\Installer\vswhere.exe"
-
-set "CL_FOUND=0"
-if exist "!VSWHERE!" (
-    echo [i] vswhere.exe found at: !VSWHERE!
-    for /f "usebackq tokens=*" %%p in (`"!VSWHERE!" -latest -requires Microsoft.VisualCpp.Tools.HostX64.TargetX64 -find "VC\Tools\MSVC\**\bin\Hostx64\x64\cl.exe" 2^>nul`) do (
-        if not defined CL_PATH set "CL_PATH=%%p"
-    )
-    if defined CL_PATH (
-        set "CL_FOUND=1"
-        echo [OK] C++ Build Tools found: !CL_PATH!
-    ) else (
-        echo [i] vswhere found no C++ compiler ^(cl.exe not present^).
-    )
-) else (
-    echo [i] vswhere.exe not found - Build Tools have likely never been installed.
-)
-
-if "!CL_FOUND!"=="1" exit /b 0
-
-:: --- Build Tools not found: try winget ---
-echo.
-echo [*] C++ Build Tools not found. Attempting silent install via winget...
-echo     This is a large download (~3-5 GB) and may take 10-20 minutes.
-echo     Leave this window open.
-echo.
-
-winget --version >nul 2>&1
-if errorlevel 1 (
-    echo [i] winget is not available. Cannot auto-install Build Tools.
-    exit /b 1
-)
-
-for /f "tokens=*" %%v in ('winget --version 2^>^&1') do set "WINGET_VER=%%v"
-echo [i] winget !WINGET_VER! detected.
-
-winget install --id Microsoft.VisualStudio.2022.BuildTools ^
-    -e ^
-    --accept-package-agreements ^
-    --accept-source-agreements ^
-    --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
-
-if errorlevel 1 (
-    echo [i] winget reported an error installing Build Tools.
-    exit /b 1
-)
-
-echo [OK] winget reported Build Tools installed. Re-checking for cl.exe...
-
-:: Re-probe after install
-set "CL_PATH="
-set "CL_FOUND=0"
-if exist "!VSWHERE!" (
-    for /f "usebackq tokens=*" %%p in (`"!VSWHERE!" -latest -requires Microsoft.VisualCpp.Tools.HostX64.TargetX64 -find "VC\Tools\MSVC\**\bin\Hostx64\x64\cl.exe" 2^>nul`) do (
-        if not defined CL_PATH set "CL_PATH=%%p"
-    )
-    if defined CL_PATH (
-        set "CL_FOUND=1"
-        echo [OK] cl.exe confirmed at: !CL_PATH!
-    )
-)
-
-if "!CL_FOUND!"=="1" (exit /b 0) else (
-    echo.
-    echo [!] cl.exe still not found after winget install.
-    echo     This usually means Visual Studio Build Tools are registered as
-    echo     installed but the C++ workload ^(VCTools^) is missing or broken.
-    echo.
-    echo     winget said "already installed" -- a clean uninstall + reinstall
-    echo     will pull the full VCTools workload and fix this.
-    echo.
-    set /p "RETRY_CLEAN=  Clear residual Build Tools files and retry install? [Y/N]: "
-    if /i "!RETRY_CLEAN!"=="Y" (
-        echo.
-        echo [*] Uninstalling existing Visual Studio Build Tools entry...
-        winget uninstall --id Microsoft.VisualStudio.2022.BuildTools -e --accept-source-agreements >nul 2>&1
-        echo [i] Uninstall command finished ^(exit ignored -- may not have been installed via winget^).
-
-        echo [*] Clearing VS installer package cache...
-        :: The package cache is what makes winget report "already installed"
-        :: even after the component files have been removed or were never
-        :: fully written.  Deleting it lets the next winget install treat
-        :: this as a fresh install and lay down all workload files cleanly.
-        set "VS_CACHE=%ProgramData%\Microsoft\VisualStudio\Packages"
-        if exist "!VS_CACHE!" (
-            echo [i] Removing: !VS_CACHE!
-            rmdir /s /q "!VS_CACHE!" >nul 2>&1
-            echo [i] Cache cleared.
-        ) else (
-            echo [i] Cache folder not found -- nothing to clear.
-        )
-
-        echo.
-        echo [*] Retrying clean install of Build Tools + VCTools workload...
-        echo     This is a large download ^(~3-5 GB^) and may take 10-20 minutes.
-        echo     Leave this window open.
-        echo.
-        winget install --id Microsoft.VisualStudio.2022.BuildTools ^
-            -e ^
-            --accept-package-agreements ^
-            --accept-source-agreements ^
-            --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
-        if errorlevel 1 (
-            echo [i] winget retry also reported an error.
-        ) else (
-            echo [OK] winget retry completed. Re-checking for cl.exe...
-        )
-
-        :: Final probe after retry
-        set "CL_PATH="
-        set "CL_FOUND=0"
-        if exist "!VSWHERE!" (
-            for /f "usebackq tokens=*" %%p in (`"!VSWHERE!" -latest -requires Microsoft.VisualCpp.Tools.HostX64.TargetX64 -find "VC\Tools\MSVC\**\bin\Hostx64\x64\cl.exe" 2^>nul`) do (
-                if not defined CL_PATH set "CL_PATH=%%p"
-            )
-            if defined CL_PATH (
-                set "CL_FOUND=1"
-                echo [OK] cl.exe confirmed at: !CL_PATH!
-            ) else (
-                echo [i] cl.exe still not found after retry.
-            )
-        )
-        if "!CL_FOUND!"=="1" (exit /b 0) else (exit /b 1)
-    ) else (
-        echo [i] Skipping cleanup - exiting for manual install.
-        exit /b 1
-    )
-)
 
 :: ============================================================
 :: :try_python  "<command>"
