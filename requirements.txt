@@ -1,8 +1,43 @@
-psutil
-requests
-pymobiledevice3
-keyring
+# =============================================================================
+# RootForgeKit — runtime dependencies
+#
+# Every package here is imported directly by our own source. Transitive
+# dependencies are deliberately NOT listed: pip resolves those, and pinning
+# them here would mean hand-editing this file every time one of the packages
+# below bumps its own requirements.
+#
+# Versions are pinned exactly, on purpose. This app gets handed to testers on
+# machines we don't control, and "works here, not there" has already cost a
+# session once. To move to a newer set, bump deliberately and re-verify.
+#
+# Regenerate the direct-dependency list by AST-scanning the source rather than
+# by running `pip freeze` -- freeze dumps the whole environment, including
+# build tooling and transitive packages that don't belong here.
+#
+# Build-only tooling (PyInstaller) lives in requirements-dev.txt.
+# =============================================================================
+
+# ---- GUI ----
 # PySide6, not PyQt6: LGPL rather than GPL, so the app can ship closed-source.
 # Keep the PyInstaller build onedir (Qt DLLs stay separate, user-replaceable)
-# to hold up the LGPL dynamic-linking condition.
-PySide6
+# to hold up the LGPL dynamic-linking condition. Pulls in PySide6-Essentials,
+# PySide6-Addons and shiboken6 automatically.
+PySide6==6.11.1
+
+# ---- System telemetry ----
+# Overview/Hardware tabs: CPU, memory, disk, network, battery.
+psutil==7.2.2
+
+# ---- Auth client ----
+requests==2.34.2
+# Session token storage via the OS credential store (Windows Credential
+# Manager / macOS Keychain / Linux Secret Service).
+keyring==25.7.0
+
+# ---- iOS device support ----
+pymobiledevice3==10.7.4
+# Lets utils/ios_core/file_system.py resolve a pymobiledevice3 coroutine when
+# an event loop is already running. Imported lazily inside that branch, so a
+# missing install doesn't fail at startup -- it fails partway through an AFC
+# file operation instead, which is why it went unnoticed until an audit.
+nest-asyncio==1.6.0
