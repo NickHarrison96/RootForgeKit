@@ -93,6 +93,15 @@ use the app in Guest mode.
 
 ## Recent Revisions
 
+### 2026-08-15 — Live public backend, over ngrok
+- **The desktop app has a public backend to talk to again.** The auth server and a tunnel
+  in front of it (`https://snore-borough-handball.ngrok-free.dev`) both run continuously
+  on their own, restarting automatically at sign-in.
+- **Fixed a caching bug** on the registration site where an already-open browser tab could
+  keep showing an old version of the page after an update, instead of the current one.
+- **Added "Remember me"** to the login screen. Leaving it unchecked now also clears any
+  session a previous, checked login had already saved on that machine.
+
 ### 2026-08-15 — v0.5: renamed to RootForgeKit, moved to PySide6, app icon
 - **The project is now RootForgeKit**, by KushNick420 — "NicksFix"/"NixFix" was always a
   placeholder. The build artefact is `RootForgeKit.exe`. Existing local settings and saved

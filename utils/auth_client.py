@@ -63,6 +63,34 @@ class AuthResult:
 
 
 SESSION_FILE = os.path.join(config_dir(), "session.json")
+PREFS_FILE = os.path.join(config_dir(), "prefs.json")
+
+
+def read_remember_preference() -> bool:
+    """
+    Whether the "Remember me" box should start checked. Defaults to True, which
+    is how the app behaved before the box existed — every login was persisted.
+    """
+    try:
+        with open(PREFS_FILE, "r", encoding="utf-8") as handle:
+            return bool(json.load(handle).get("remember", True))
+    except (OSError, json.JSONDecodeError):
+        return True
+
+
+def write_remember_preference(remember: bool):
+    """
+    Persist the checkbox state itself, separately from the session.
+
+    Without this, unchecking the box on a shared machine would silently revert
+    to checked on the next launch — the one situation where the user most needs
+    it to stay off.
+    """
+    try:
+        with open(PREFS_FILE, "w", encoding="utf-8") as handle:
+            json.dump({"remember": bool(remember)}, handle)
+    except OSError:
+        pass  # A preferences file we can't write isn't worth failing a login over.
 
 
 class AuthClient:
@@ -85,7 +113,7 @@ class AuthClient:
     # Public API
     # -------------------------------------------------------------------------
 
-    def register(self, username: str, password: str) -> AuthResult:
+    def register(self, username: str, password: str, remember: bool = True) -> AuthResult:
         try:
             resp = requests.post(
                 f"{self.base_url}/auth/register",
@@ -97,7 +125,7 @@ class AuthClient:
 
         if resp.status_code == 201:
             data = resp.json()
-            self._persist_session(username, data["access_token"])
+            self._persist_session(username, data["access_token"], remember)
             return AuthResult(True, "ok", "Account created.", username, data["role"],
                                data.get("tier", "free"))
 
@@ -108,7 +136,7 @@ class AuthClient:
 
         return AuthResult(False, "server_error", self._detail(resp))
 
-    def login(self, username: str, password: str) -> AuthResult:
+    def login(self, username: str, password: str, remember: bool = True) -> AuthResult:
         # ---- DEBUG LOGIN BACKDOOR (see DEBUG_* constants above) ----
         # Intercept before any network call so it works with the server
         # offline. role="admin" + tier="diamond" gives full tab access and
@@ -134,7 +162,7 @@ class AuthClient:
 
         if resp.status_code == 200:
             data = resp.json()
-            self._persist_session(username, data["access_token"])
+            self._persist_session(username, data["access_token"], remember)
             return AuthResult(True, "ok", "Signed in.", username, data["role"],
                                data.get("tier", "free"))
 
@@ -212,7 +240,14 @@ class AuthClient:
             "Cannot reach the auth server. Check your connection or try again shortly.",
         )
 
-    def _persist_session(self, username: str, token: str):
+    def _persist_session(self, username: str, token: str, remember: bool = True):
+        if not remember:
+            # Opting out now also has to undo any earlier "remember me" —
+            # otherwise a session saved on a previous login stays on disk and
+            # silently signs this machine back in on the next launch, which is
+            # the exact opposite of what unchecking the box asked for.
+            self.logout()
+            return
         keyring.set_password(SERVICE_NAME, username, token)
         with open(SESSION_FILE, "w", encoding="utf-8") as handle:
             json.dump({"username": username}, handle)

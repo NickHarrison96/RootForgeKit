@@ -15,12 +15,14 @@
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFrame, QSizePolicy, QSpacerItem,
+    QPushButton, QFrame, QSizePolicy, QSpacerItem, QCheckBox,
 )
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont, QPixmap
 
-from utils.auth_client import AuthClient, AuthResult
+from utils.auth_client import (
+    AuthClient, AuthResult, read_remember_preference, write_remember_preference,
+)
 from utils.paths import resource_path
 
 
@@ -86,7 +88,7 @@ class AuthSplash(QWidget):
         # ---- Login Card Container ----
         card = QFrame()
         card.setObjectName("AuthCard")
-        card.setFixedSize(440, 610)
+        card.setFixedSize(440, 650)
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(44, 32, 44, 32)
         card_layout.setSpacing(0)
@@ -162,6 +164,16 @@ class AuthSplash(QWidget):
         self.password_input.setObjectName("AuthInput")
         self.password_input.setMinimumHeight(40)
         card_layout.addWidget(self.password_input)
+        card_layout.addSpacing(10)
+
+        # ---- Remember me ----
+        # Unchecked means the token is never written to the keyring, so the
+        # next launch lands on this form instead of auto-signing in.
+        self.remember_check = QCheckBox("Remember me on this device")
+        self.remember_check.setObjectName("AuthRememberCheck")
+        self.remember_check.setChecked(read_remember_preference())
+        self.remember_check.setCursor(Qt.CursorShape.PointingHandCursor)
+        card_layout.addWidget(self.remember_check)
         card_layout.addSpacing(6)
 
         # ---- Status Label ----
@@ -258,14 +270,17 @@ class AuthSplash(QWidget):
             self._set_status("⚠️  Please enter both username and password.", "#f0a500")
             return
 
+        remember = self.remember_check.isChecked()
+        write_remember_preference(remember)
+
         self._set_controls_enabled(False)
         if self._register_mode:
             self._set_status("Creating account…", "#8b949e")
-            self._run_worker(self.client.register, username, password,
+            self._run_worker(self.client.register, username, password, remember,
                              callback=self._on_auth_result)
         else:
             self._set_status("Signing in…", "#8b949e")
-            self._run_worker(self.client.login, username, password,
+            self._run_worker(self.client.login, username, password, remember,
                              callback=self._on_auth_result)
 
     def _on_auth_result(self, result: AuthResult):
@@ -315,5 +330,6 @@ class AuthSplash(QWidget):
 
     def _set_controls_enabled(self, enabled: bool):
         for widget in (self.username_input, self.password_input,
-                      self.submit_btn, self.guest_btn, self.mode_toggle_btn):
+                      self.remember_check, self.submit_btn, self.guest_btn,
+                      self.mode_toggle_btn):
             widget.setEnabled(enabled)

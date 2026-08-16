@@ -111,6 +111,32 @@ QLineEdit#AuthInput::placeholder {
     color: #484f58;
 }
 
+QCheckBox#AuthRememberCheck {
+    color: #8b949e;
+    font-size: 12px;
+    spacing: 8px;
+}
+
+QCheckBox#AuthRememberCheck::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    background-color: #0d1117;
+}
+
+QCheckBox#AuthRememberCheck::indicator:hover {
+    border-color: #00e5ff;
+}
+
+/* Solid cyan fill is the checked state — no tick asset, because relative
+   stylesheet URLs resolve against the working directory, which is exactly the
+   assumption utils/paths.py exists to avoid. */
+QCheckBox#AuthRememberCheck::indicator:checked {
+    background-color: #00e5ff;
+    border-color: #00e5ff;
+}
+
 QPushButton#AuthLoginBtn {
     background: qlineargradient(
         x1:0, y1:0, x2:1, y2:0,
