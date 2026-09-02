@@ -87,3 +87,7 @@ RevLog.md
 # ---- PyInstaller build output ----
 build/
 dist/
+
+# ---- Packaged release artifacts (built, then uploaded to GitHub Releases) ----
+# The zip is a build output, not source — it lives on the Releases page, not in git.
+RootForgeKit-*.zip

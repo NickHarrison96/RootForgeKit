@@ -3,6 +3,9 @@
 **A cross-platform system utility, diagnostics and mobile-forensics suite.**
 Windows · macOS · Linux — built with PySide6.
 By KushNick420.
+
+> ⚠️ **Super early-access, pre-alpha development build.** RootForgeKit is unfinished software under active development — expect bugs, breaking changes, half-built features, and rough edges. It is **not** production-ready. Use it on hardware you can afford to experiment with, back up your devices first, and proceed at your own risk. Feedback and issue reports are welcome.
+
 ---
 RootForgeKit bundles the tools a technician actually reaches for — hardware health, system
 repair, iOS and Android device work — into one dark-themed, 3uTools-inspired desktop app,
