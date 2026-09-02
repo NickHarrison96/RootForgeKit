@@ -53,18 +53,6 @@ datas += _pmd_datas
 binaries += _pmd_binaries
 hiddenimports += _pmd_hidden
 
-# --- keyring ---------------------------------------------------------------
-# Backends are discovered through entry points, never imported directly, so
-# nothing in the source tree references keyring.backends.Windows. Without
-# this the packaged app finds zero backends and silently fails to store a
-# session — the classic "works from source, not when packaged" failure.
-hiddenimports += collect_submodules("keyring.backends")
-hiddenimports += [
-    "win32ctypes.core",
-    "win32ctypes.core.cffi",
-    "win32ctypes.core.ctypes",
-]
-
 # --- our own packages ------------------------------------------------------
 # Most of these are reached by ordinary imports from main.py, but dialogs are
 # imported lazily in a few places. Collecting the packages wholesale costs a

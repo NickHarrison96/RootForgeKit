@@ -1,7 +1,7 @@
 # =============================================================================
-# RootForgeKit — Gamer Tools Tab (Auth-Gated)
-# Gaming-focused utilities locked behind Technician authentication.
-# OS selector (Windows / macOS / Linux) reveals that platform's tool set.
+# RootForgeKit — Gamer Tools Tab
+# Gaming-focused utilities. OS selector (Windows / macOS / Linux) reveals
+# that platform's tool set.
 # =============================================================================
 
 import platform
@@ -96,15 +96,12 @@ TOOL_BTN_H = 28
 
 class GamerToolsTab(QWidget):
     """
-    Gaming-focused utilities with auth gating.
+    Gaming-focused utilities.
     Same architecture as TechToolsTab: OS selector drives a stacked tool area.
     """
 
-    def __init__(self, role: str = "guest", tier: str = "free", display_role: str = "", parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.role = role
-        self.tier = tier
-        self.display_role = display_role
         self.host = get_host_profile()
         self.host_os = self.host.family
         self.cmd_builder = CommandBuilder()
@@ -129,12 +126,7 @@ class GamerToolsTab(QWidget):
         main_layout.addWidget(subtitle)
         main_layout.addSpacing(10)
 
-        # ---- Auth Gate ----
-        if self.role != "technician":
-            self._build_locked_overlay(main_layout)
-            return
-
-        # ---- Unlocked: OS selector + Tool Grid + Terminal ----
+        # ---- OS selector + Tool Grid + Terminal ----
         splitter = QSplitter(Qt.Orientation.Vertical)
         splitter.setChildrenCollapsible(False)
         splitter.setHandleWidth(10)
@@ -283,37 +275,6 @@ class GamerToolsTab(QWidget):
         if btn:
             btn.setChecked(True)
 
-    def _build_locked_overlay(self, layout: QVBoxLayout):
-        """Show a locked message for unauthorized users."""
-        lock_frame = QFrame()
-        lock_frame.setObjectName("LockedOverlay")
-        lock_layout = QVBoxLayout(lock_frame)
-        lock_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lock_layout.setSpacing(12)
-
-        lock_icon = QLabel("🔒")
-        lock_icon.setFont(QFont("Segoe UI Emoji", 40))
-        lock_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lock_layout.addWidget(lock_icon)
-
-        lock_text = QLabel("Technician Authentication Required")
-        lock_text.setObjectName("LockedTitle")
-        lock_text.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
-        lock_text.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lock_layout.addWidget(lock_text)
-
-        lock_desc = QLabel(
-            "Gaming utilities require Technician-level access.\n"
-            "Sign in with valid credentials to unlock performance tools."
-        )
-        lock_desc.setObjectName("LockedDesc")
-        lock_desc.setFont(QFont("Segoe UI", 9))
-        lock_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lock_desc.setWordWrap(True)
-        lock_layout.addWidget(lock_desc)
-
-        layout.addWidget(lock_frame, stretch=1)
-
     # -------------------------------------------------------------------------
     # Button Factories
     # -------------------------------------------------------------------------
@@ -328,16 +289,7 @@ class GamerToolsTab(QWidget):
 
     def _create_tool_button(self, os_key: str, cmd_key: str, icon: str,
                             name: str, desc: str, risk: str) -> QPushButton:
-        """
-        Create a compact tool button wired to the command registry.
-
-        TODO(tiers): every tool here is Free-accessible today — no per-tool
-        tier requirement has been assigned yet (pending which specific tools
-        should be Paid/Diamond-only). When that's decided, gate individual
-        buttons with `has_tier_access(self.display_role, self.tier, minimum)`
-        from utils.tiers — disable + lock icon rather than hiding, so Free
-        users can see what upgrading unlocks.
-        """
+        """Create a compact tool button wired to the command registry."""
         risk_marks = {"low": "", "medium": " ·", "high": " !"}
         btn = QPushButton(f"{icon}  {name}{risk_marks.get(risk, '')}")
         self._style_tool_button(btn, f"{desc}\n\nRisk: {risk.upper()}", risk)

@@ -28,12 +28,6 @@ PySide6==6.11.1
 # Overview/Hardware tabs: CPU, memory, disk, network, battery.
 psutil==7.2.2
 
-# ---- Auth client ----
-requests==2.34.2
-# Session token storage via the OS credential store (Windows Credential
-# Manager / macOS Keychain / Linux Secret Service).
-keyring==25.7.0
-
 # ---- iOS device support ----
 pymobiledevice3==10.7.4
 # Lets utils/ios_core/file_system.py resolve a pymobiledevice3 coroutine when

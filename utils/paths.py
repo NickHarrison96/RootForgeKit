@@ -64,11 +64,11 @@ def resource_path(*parts: str) -> str:
 
 def config_dir() -> str:
     """
-    Per-user CONFIG directory — small settings files (session.json).
+    Per-user CONFIG directory — small settings files.
 
-    On Windows this is APPDATA (Roaming) deliberately: it is what
-    utils/auth_client.py has always used, and moving it would sign every
-    existing user out for no benefit.
+    On Windows this is APPDATA (Roaming) deliberately, so per-user settings
+    follow a roaming profile between machines. Bulky runtime files go in
+    data_dir() (LOCALAPPDATA) instead.
     """
     system = platform.system()
     if system == "Windows":

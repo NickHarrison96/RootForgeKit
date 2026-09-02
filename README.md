@@ -40,9 +40,6 @@ that can't run on the current host are shown for reference but blocked from exec
 **🤖 Android Tools** — device info, ADB file explorer, APK install, screenshot capture,
 logcat streaming, reboot to bootloader/recovery, `adb` backup, and wireless ADB.
 
-**🔐 Optional self-hosted auth** — a FastAPI + SQLite licensing server with HWID binding
-and OS-keyring session storage. Entirely optional; the app runs without it.
-
 ---
 
 ## Requirements
@@ -84,14 +81,21 @@ Developer services on iOS 17 and newer are only reachable through an RSD tunnel.
 Mode, auto-mount the DDI, then start the tunnel (this prompts for elevation). When
 "Developer services" reads green, the DVT tools are ready.
 
-### Optional auth server
-
-The licensing server is maintained in a separate, private repository. Skip it entirely to
-use the app in Guest mode.
-
 ---
 
 ## Recent Revisions
+
+### 2026-09-02 — Removed the auth server, login screen and tier gating
+- **The app now opens straight to the tabs.** The login/register/guest splash, the
+  self-hosted auth client (`utils/auth_client.py`), the HWID-bound session storage and
+  the "Remember me" flow are gone. There is no sign-in and no sign-out.
+- **Every tab is available to everyone.** Tech Tools and Gamer Tools no longer show a
+  "Technician authentication required" lock — the role gate and the `utils/tiers.py`
+  Free/Paid/Diamond scaffolding were deleted with it.
+- **`requests` and `keyring` dropped** from `requirements.txt`, and the `keyring`
+  hidden-import block is gone from the PyInstaller spec.
+- The auth server in its separate private repository is untouched — it just has no
+  client talking to it anymore.
 
 ### 2026-08-15 — Live public backend, over ngrok
 - **The desktop app has a public backend to talk to again.** The auth server and a tunnel
