@@ -4,12 +4,11 @@
 # that platform's tool set.
 # =============================================================================
 
-import platform
 import webbrowser
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
-    QPushButton, QGridLayout, QScrollArea, QSplitter, QSizePolicy,
+    QPushButton, QGridLayout, QScrollArea, QSplitter,
     QStackedWidget, QButtonGroup,
 )
 from PySide6.QtCore import Qt

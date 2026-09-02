@@ -5,7 +5,7 @@
 #   Right: SMBIOS Motherboard Make/Model + Host ID hash
 # =============================================================================
 
-from PySide6.QtWidgets import QStatusBar, QLabel, QWidget, QHBoxLayout, QFrame
+from PySide6.QtWidgets import QStatusBar, QLabel, QWidget, QHBoxLayout
 from PySide6.QtGui import QFont
 
 
