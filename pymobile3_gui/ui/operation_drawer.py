@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QCursor
 from pymobile3_gui.ui.theme import Colors
+from pymobile3_gui.ui.assets import icon
 from pymobile3_gui.core.task_manager import TaskInfo
 
 
@@ -31,10 +32,12 @@ class StepBadge(QFrame):
         layout.addWidget(self.lbl_name)
         self.set_state("pending")
 
+    def _set_icon(self, name: str, color: str):
+        self.lbl_icon.setPixmap(icon(name, color, 16).pixmap(16, 16))
+
     def set_state(self, status: str):
         if status == "done":
-            self.lbl_icon.setText("✓")
-            self.lbl_icon.setStyleSheet(f"color: {Colors.SUCCESS}; font-weight: 800;")
+            self._set_icon("circle-check", Colors.SUCCESS)
             self.lbl_name.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-weight: 500;")
             self.setStyleSheet(f"""
                 QFrame#StepBadge {{
@@ -44,8 +47,7 @@ class StepBadge(QFrame):
                 }}
             """)
         elif status == "running":
-            self.lbl_icon.setText("●")
-            self.lbl_icon.setStyleSheet("color: #60a5fa; font-weight: 800;")
+            self._set_icon("loader", "#60a5fa")
             self.lbl_name.setStyleSheet("color: #ffffff; font-weight: 600;")
             self.setStyleSheet(f"""
                 QFrame#StepBadge {{
@@ -55,8 +57,7 @@ class StepBadge(QFrame):
                 }}
             """)
         elif status == "failed":
-            self.lbl_icon.setText("✕")
-            self.lbl_icon.setStyleSheet(f"color: {Colors.DANGER}; font-weight: 800;")
+            self._set_icon("circle-x", Colors.DANGER)
             self.lbl_name.setStyleSheet(f"color: {Colors.DANGER}; font-weight: 500;")
             self.setStyleSheet(f"""
                 QFrame#StepBadge {{
@@ -66,8 +67,7 @@ class StepBadge(QFrame):
                 }}
             """)
         else:  # pending
-            self.lbl_icon.setText("○")
-            self.lbl_icon.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-weight: 700;")
+            self._set_icon("chevron-right", Colors.TEXT_MUTED)
             self.lbl_name.setStyleSheet(f"color: {Colors.TEXT_MUTED}; font-weight: 500;")
             self.setStyleSheet(f"""
                 QFrame#StepBadge {{
