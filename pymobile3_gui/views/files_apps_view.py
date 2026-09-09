@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QFont, QCursor
 from pymobile3_gui.ui.theme import Colors
-from utils.ios_core.file_system import FileSystemManager, AFCException
-from utils.resource_manager import safe_run_command
+from pymobile3_gui.core.backend.file_system import FileSystemManager, AFCException
+from pymobile3_gui.core.backend.resource_manager import safe_run_command
 
 
 class IosFileLoadWorker(QThread):

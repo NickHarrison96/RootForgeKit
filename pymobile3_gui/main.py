@@ -6,7 +6,6 @@ and real-time background operation telemetry.
 """
 
 import sys
-import os
 
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
@@ -14,11 +13,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon, QFont
-
-# Ensure repository root is on sys.path so modules resolve smoothly
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
 
 from pymobile3_gui.ui.theme import get_application_stylesheet, Colors
 from pymobile3_gui.ui.native_window import NativeFramelessWindow

@@ -14,8 +14,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QCursor
 from pymobile3_gui.ui.theme import Colors
 from pymobile3_gui.core.task_manager import TaskManager
-from utils.paths import backups_dir
-from utils.ios_core.backup_engine import AcquisitionWorker, ACQUISITION_MODES, DEFAULT_OPTIONS
+from pymobile3_gui.core.backend.paths import backups_dir
+from pymobile3_gui.core.backend.backup_engine import AcquisitionWorker, ACQUISITION_MODES, DEFAULT_OPTIONS
 
 
 class ModeSelectCard(QFrame):

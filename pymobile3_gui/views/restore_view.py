@@ -14,7 +14,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QCursor
 from pymobile3_gui.ui.theme import Colors
 from pymobile3_gui.core.task_manager import TaskManager
-from utils.resource_manager import safe_run_command
+from pymobile3_gui.core.backend.resource_manager import safe_run_command
 
 
 class RestoreView(QWidget):

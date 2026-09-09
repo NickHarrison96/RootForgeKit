@@ -15,10 +15,10 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QCursor, QPixmap
 from pymobile3_gui.ui.theme import Colors
-from utils.ios_core.tunnel_manager import (
+from pymobile3_gui.core.backend.tunnel_manager import (
     run_developer_command, get_tunnel_manager, is_admin
 )
-from utils.resource_manager import safe_run_command
+from pymobile3_gui.core.backend.resource_manager import safe_run_command
 
 
 LOCATION_PRESETS = [
