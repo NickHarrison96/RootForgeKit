@@ -15,6 +15,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon, QFont
 
 from pymobile3_gui.ui.theme import get_application_stylesheet, Colors
+from pymobile3_gui.ui.assets import load_fonts
 from pymobile3_gui.ui.native_window import NativeFramelessWindow
 from pymobile3_gui.ui.title_bar import TitleBar
 from pymobile3_gui.ui.sidebar import NavigationSidebar
@@ -152,6 +153,7 @@ class MainWindow(NativeFramelessWindow):
 def main():
     _set_windows_app_id()
     app = QApplication(sys.argv)
+    load_fonts()
     app.setStyleSheet(get_application_stylesheet())
 
     window = MainWindow()

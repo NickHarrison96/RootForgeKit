@@ -59,7 +59,7 @@ def get_application_stylesheet() -> str:
     return f"""
     QWidget {{
         color: {Colors.TEXT_PRIMARY};
-        font-family: 'Segoe UI Variable Text', 'Segoe UI', 'Inter', -apple-system, sans-serif;
+        font-family: 'Inter', 'Segoe UI Variable Text', 'Segoe UI', -apple-system, sans-serif;
         font-size: 13px;
         outline: none;
     }}
@@ -237,5 +237,9 @@ def get_application_stylesheet() -> str:
         selection-background-color: #243552;
         border-radius: 6px;
         padding: 4px;
+    }}
+
+    QPlainTextEdit, QTextEdit {{
+        font-family: 'JetBrains Mono', 'Consolas', monospace;
     }}
     """

@@ -155,7 +155,7 @@ class OperationDrawer(QFrame):
                 color: #a5b4fc;
                 border: 1px solid {Colors.BORDER_DEFAULT};
                 border-radius: 8px;
-                font-family: 'Consolas', 'Cascadia Code', monospace;
+                font-family: 'JetBrains Mono', 'Consolas', monospace;
                 font-size: 11px;
                 padding: 8px;
             }}
