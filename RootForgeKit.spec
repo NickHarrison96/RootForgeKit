@@ -48,10 +48,22 @@ if os.path.isdir(_platform_tools):
 # most of them. collect_all also picks up its bundled resources (device
 # support files, plist templates) which are NOT importable code and would
 # otherwise be left behind.
-_pmd_datas, _pmd_binaries, _pmd_hidden = collect_all("pymobiledevice3")
-datas += _pmd_datas
-binaries += _pmd_binaries
-hiddenimports += _pmd_hidden
+#
+# No longer a dependency (see requirements.txt -- the iOS code lives in its own
+# checkout, and its lzfse/pylzss chain had no Windows wheels on Python 3.13+,
+# which broke `pip install -r requirements.txt` on a clean machine). The guard
+# matters: collect_all() raises on a missing package, so an unguarded call
+# turns every build into a hard failure the moment pymobiledevice3 is absent.
+# Skipped silently when it isn't installed; there is nothing in main.py or
+# tabs/ that imports it.
+try:
+    _pmd_datas, _pmd_binaries, _pmd_hidden = collect_all("pymobiledevice3")
+except Exception:
+    _pmd_datas, _pmd_binaries, _pmd_hidden = [], [], []
+else:
+    datas += _pmd_datas
+    binaries += _pmd_binaries
+    hiddenimports += _pmd_hidden
 
 # --- our own packages ------------------------------------------------------
 # Most of these are reached by ordinary imports from main.py, but dialogs are

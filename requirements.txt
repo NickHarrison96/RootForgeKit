@@ -1,10 +1,10 @@
 # =============================================================================
 # RootForgeKit — runtime dependencies
 #
-# Every package here is imported directly by our own source. Transitive
-# dependencies are deliberately NOT listed: pip resolves those, and pinning
-# them here would mean hand-editing this file every time one of the packages
-# below bumps its own requirements.
+# EVERY package here is imported directly by our own source, and nothing else
+# belongs in this file. Transitive dependencies are deliberately NOT listed:
+# pip resolves those, and pinning them here would mean hand-editing this file
+# every time one of the packages below bumps its own requirements.
 #
 # Versions are pinned exactly, on purpose. This app gets handed to testers on
 # machines we don't control, and "works here, not there" has already cost a
@@ -15,6 +15,20 @@
 # build tooling and transitive packages that don't belong here.
 #
 # Build-only tooling (PyInstaller) lives in requirements-dev.txt.
+#
+# ---- Do not add a dependency without checking it installs everywhere --------
+# The hard requirement for anything added here: it must have a prebuilt wheel
+# for Windows on every Python version we claim to support. A package with no
+# wheel makes pip fall back to a source build, which needs Visual Studio
+# Build Tools -- several GB of download on a machine that has neither by
+# default. That is not an acceptable first-run experience, and it is exactly
+# how this file used to break (see the pymobiledevice3 note at the bottom).
+#
+# Verify a candidate before committing it, from a clean temp dir:
+#   python -m pip download --no-deps --only-binary=:all: \
+#       --python-version 3.13 --implementation cp --abi cp313 \
+#       --platform win_amd64 -d _wheelcheck <package>
+# "ERROR: No matching distribution found" means no wheel -> do not add it.
 # =============================================================================
 
 # ---- GUI ----
@@ -22,16 +36,47 @@
 # Keep the PyInstaller build onedir (Qt DLLs stay separate, user-replaceable)
 # to hold up the LGPL dynamic-linking condition. Pulls in PySide6-Essentials,
 # PySide6-Addons and shiboken6 automatically.
+#
+# Ships as a cp310-abi3 wheel, so one wheel covers every Python 3.10+.
 PySide6==6.11.1
 
 # ---- System telemetry ----
 # Overview/Hardware tabs: CPU, memory, disk, network, battery.
+#
+# Ships as a cp37-abi3 wheel, so one wheel covers every Python 3.x.
 psutil==7.2.2
 
-# ---- iOS device support ----
-pymobiledevice3==10.7.4
-# Lets utils/ios_core/file_system.py resolve a pymobiledevice3 coroutine when
-# an event loop is already running. Imported lazily inside that branch, so a
-# missing install doesn't fail at startup -- it fails partway through an AFC
-# file operation instead, which is why it went unnoticed until an audit.
-nest-asyncio==1.6.0
+# ---- iOS device support: intentionally NOT a dependency here ---------------
+# pymobiledevice3 (and its nest-asyncio companion) were removed on 2026-09-27.
+#
+# Nothing in this repository imports either of them. The iOS code moved to its
+# own checkout, which owns its own dependency list -- see .gitignore, and the
+# pymobile3_gui/ entries there. RootForgeKit.spec's collect_all("pymobiledevice3")
+# block is now skipped automatically when the package is absent.
+#
+# They were also the sole reason `pip install -r requirements.txt` failed
+# outright on a clean Windows machine, which is worth recording so nobody
+# re-adds them casually:
+#
+#   pymobiledevice3 -> pyimg4 -> lzfse AND pylzss
+#
+# Both of those are C extensions, and neither has a Windows wheel for Python
+# 3.13+:
+#   * lzfse is capped at 0.4.2 (its final release) and ships wheels only up to
+#     cp312. There is no cp313 wheel to be found, so pip always falls back to
+#     the sdist on 3.13.
+#   * pylzss is hard-pinned to 0.3.4 by pyimg4 0.8.8. 0.3.4 does have cp313
+#     wheels, but win32 only -- there is no cp313-win_amd64. A 64-bit Windows
+#     host therefore also falls back to the sdist.
+#
+# Falling back to an sdist means compiling, which means MSVC. A fresh Windows
+# install has no compiler, so both builds died with "Failed to build wheel for
+# lzfse" / "...for pylzss" and the install never completed.
+#
+# Neither problem is fixable on 3.13: lzfse 0.4.2 is the last release and has no
+# cp313 wheel, and even the newest pylzss (0.3.8) still has no cp313-win_amd64.
+# The supported fix was to drop the unused dependency, not to demand a
+# multi-gigabyte toolchain from every new user.
+#
+# If the iOS code is ever merged back in, re-check the wheels BEFORE pinning --
+# and expect to cap support at Python 3.12 until upstream ships cp313 wheels.

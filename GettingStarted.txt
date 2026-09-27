@@ -1,7 +1,55 @@
-/// INTERNAL USE ONLY /// Pre Production Use ONLY ///
+/// PRE-PRODUCTION USE ONLY ///
 
-1. Go to microsoft store and download python 3.10 or newer [time of release 3.13]
-2. once installed open terminal and cd to your project folder "cd c:/___/____/"
-3. in terminal enter "pip install -r requirements.txt" and hit enter and wait.
-4. if all was successful program is ready.
-5. run it with "python main.py"
+QUICK START
+===========
+Full instructions, including troubleshooting, are in README.md.
+
+FIRST TIME ONLY
+---------------
+1. Install Python 3.10 or newer from python.org.
+   IMPORTANT: tick "Add python.exe to PATH" during setup.
+   Do NOT install from the Microsoft Store -- its python.exe stub opens the
+   Store instead of running Python.
+
+2. Install Git from https://git-scm.com/downloads
+
+3. Open a terminal and go to the project folder:
+   cd C:\path\to\RootForgeKit
+
+4. Create the virtual environment (once):
+   python -m venv .venv
+   .venv\Scripts\activate
+
+5. Install the dependencies (5 packages, a minute or two):
+   pip install -r requirements.txt
+
+6. Start the app:
+   python main.py
+
+EVERY TIME AFTER THAT
+---------------------
+1. cd C:\path\to\RootForgeKit
+2. .venv\Scripts\activate
+3. python main.py
+
+UPDATING
+--------
+git pull
+pip install -r requirements.txt
+
+IF INSTALL FAILS
+----------------
+"Failed to build wheel for lzfse" / "pylzss"
+    You have an old .venv from before 2026-09-27. Delete it and start again:
+        deactivate
+        Remove-Item -Recurse -Force .venv
+
+"python" opens the Microsoft Store
+    Settings > Apps > Advanced app settings > App execution aliases
+    Turn OFF both python.exe and python3.exe, then reopen the terminal.
+
+"No module named 'PySide6'"
+    You forgot to activate. Your prompt should start with (.venv).
+        .venv\Scripts\activate
+
+See the Troubleshooting section of README.md for the rest.
