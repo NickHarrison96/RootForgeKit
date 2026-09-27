@@ -12,6 +12,8 @@ from datetime import timedelta
 import psutil
 from PySide6.QtCore import QThread, Signal
 
+from utils.cim_query import cim_query
+
 
 class SystemInfoWorker(QThread):
     """
@@ -107,27 +109,20 @@ class SystemInfoWorker(QThread):
         except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
 
-        # Windows fallback: WMIC
+        # Windows fallback: CIM. Was `wmic path win32_videocontroller get
+        # Name,AdapterRAM /format:csv` read by position -- parts[1] for VRAM,
+        # parts[2] for the name. That only worked because wmic reorders columns
+        # alphabetically, so AdapterRAM happened to land first. It also broke
+        # outright on current Windows 11, where wmic no longer exists.
         if not gpus and system == "Windows":
-            try:
-                result = subprocess.run(
-                    ["wmic", "path", "win32_videocontroller", "get",
-                     "Name,AdapterRAM", "/format:csv"],
-                    capture_output=True, text=True, timeout=5,
-                )
-                if result.returncode == 0:
-                    for line in result.stdout.strip().split("\n")[1:]:
-                        parts = [p.strip() for p in line.split(",")]
-                        if len(parts) >= 3 and parts[1]:
-                            vram_bytes = int(parts[1]) if parts[1].isdigit() else 0
-                            gpus.append({
-                                "name": parts[2] if len(parts) > 2 else "Unknown GPU",
-                                "vram_total_mb": str(vram_bytes // (1024 * 1024)),
-                                "vram_used_mb": "N/A",
-                                "temp_c": "N/A",
-                            })
-            except (FileNotFoundError, subprocess.TimeoutExpired, ValueError):
-                pass
+            for row in cim_query("Win32_VideoController", ["Name", "AdapterRAM"]):
+                vram_bytes = int(row["AdapterRAM"]) if row["AdapterRAM"].isdigit() else 0
+                gpus.append({
+                    "name": row["Name"] or "Unknown GPU",
+                    "vram_total_mb": str(vram_bytes // (1024 * 1024)),
+                    "vram_used_mb": "N/A",
+                    "temp_c": "N/A",
+                })
 
         # macOS fallback: system_profiler
         if not gpus and system == "Darwin":
@@ -244,31 +239,16 @@ class SystemInfoWorker(QThread):
         system = platform.system()
 
         if system == "Windows":
-            try:
-                # Baseboard
-                res = subprocess.run(
-                    ["wmic", "baseboard", "get", "Manufacturer,Product", "/format:csv"],
-                    capture_output=True, text=True, timeout=5,
-                )
-                if res.returncode == 0:
-                    for line in res.stdout.strip().split("\n")[1:]:
-                        parts = [p.strip() for p in line.split(",")]
-                        if len(parts) >= 3:
-                            info["manufacturer"] = parts[1]
-                            info["product"] = parts[2]
-                # BIOS
-                res = subprocess.run(
-                    ["wmic", "bios", "get", "Manufacturer,SMBIOSBIOSVersion", "/format:csv"],
-                    capture_output=True, text=True, timeout=5,
-                )
-                if res.returncode == 0:
-                    for line in res.stdout.strip().split("\n")[1:]:
-                        parts = [p.strip() for p in line.split(",")]
-                        if len(parts) >= 3:
-                            info["bios_vendor"] = parts[1]
-                            info["bios_version"] = parts[2]
-            except (FileNotFoundError, subprocess.TimeoutExpired):
-                pass
+            # Baseboard
+            for row in cim_query("Win32_BaseBoard", ["Manufacturer", "Product"]):
+                info["manufacturer"] = row["Manufacturer"] or "N/A"
+                info["product"] = row["Product"] or "N/A"
+                break
+            # BIOS
+            for row in cim_query("Win32_BIOS", ["Manufacturer", "SMBIOSBIOSVersion"]):
+                info["bios_vendor"] = row["Manufacturer"] or "N/A"
+                info["bios_version"] = row["SMBIOSBIOSVersion"] or "N/A"
+                break
 
         elif system == "Linux":
             # Read from /sys/devices/virtual/dmi/id/ (requires root)

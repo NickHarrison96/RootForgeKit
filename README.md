@@ -446,15 +446,18 @@ the hardware inventory all work. It's the *tools* that are Windows-only.
 The complete history lives in the internal `RevLog.md`, which is not committed.
 Recent entries:
 
-### 2026-09-27 — Install works on a clean Windows machine again
+### 2026-09-27 — Tools work on a clean Windows machine again
 
-- **Fixed `pip install -r requirements.txt` failing on any fresh machine.**
-  `pymobiledevice3` was pulling in `pyimg4`, which needs two C extensions
-  (`lzfse` and `pylzss`) that have no prebuilt Windows wheels for Python 3.13+.
-  pip fell back to compiling them, had no compiler available, and the install
-  died. Neither package can be fixed upstream on 3.13 — `lzfse` is at its final
-  release with no 3.13 wheel, and even the newest `pylzss` lacks a 64-bit
-  Windows build for it.
+Two separate things were breaking on a fresh install. Both were invisible on
+the development machine, which is why they survived.
+
+**1. The install itself failed.** `pymobiledevice3` was pulling in `pyimg4`,
+which needs two C extensions (`lzfse` and `pylzss`) that have no prebuilt
+Windows wheels for Python 3.13+. pip fell back to compiling them, had no
+compiler available, and the install died. Neither package can be fixed upstream
+on 3.13 — `lzfse` is at its final release with no 3.13 wheel, and even the
+newest `pylzss` lacks a 64-bit Windows build for it.
+
 - **Removed `pymobiledevice3` and `nest-asyncio` from the dependencies
   entirely.** Neither was imported by a single file in this repository — the
   iOS code moved to its own checkout, which owns its own dependency list. This
@@ -464,8 +467,29 @@ Recent entries:
   package isn't installed, instead of failing the whole build.
 - `requirements.txt` documents the wheel-availability rule, so the next person
   to add a dependency has a way to check before it breaks the install.
-- **README rewritten** for people who have never seen this project: what it
-  does, how to install it, what the errors mean, and where it puts your files.
+
+**2. The Tech Tools WMI commands didn't exist any more.** Microsoft has been
+retiring `wmic` for years — deprecated in Windows 10 21H2, disabled by default
+in Windows 11 23H2/24H2, and **removed outright** as of the August 2026 update,
+with no way to add it back. On a current Windows 11 install the executable
+simply isn't on disk, so *Disk Health* and *GPU Details* failed with
+`'wmic' is not recognized`.
+
+- **Replaced every `wmic` call with PowerShell's `Get-CimInstance`**, the
+  migration path Microsoft recommends. All 8 call sites: the two Tech Tools
+  commands, the GPU list, the motherboard/BIOS card, the status-bar hardware
+  ID, and GPU vendor detection. WMI itself was never the problem — only the
+  command-line front-end Microsoft deleted.
+- **This also fixed wrong data on machines where `wmic` still worked.**
+  `wmic`'s CSV output doesn't quote values containing commas, so any
+  motherboard made by MSI (and others) had every field after the first comma
+  shifted by one. The status bar read `Micro-Star International Co. Ltd.` as
+  the board name and reported the board's *product* name as its *serial
+  number*; the BIOS version showed `LLC.` instead of the actual version.
+  Results are now keyed by field name, so column order can't matter.
+
+**3. README rewritten** for people who have never seen this project: what it
+does, how to install it, what the errors mean, and where it puts your files.
 
 ### 2026-09-02 — Removed the auth server, login screen and tier gating
 

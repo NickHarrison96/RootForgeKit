@@ -7,7 +7,8 @@
 # =============================================================================
 
 import platform
-import subprocess
+
+from utils.cim_query import cim_query
 
 
 def detect_cpu_vendor() -> str:
@@ -22,22 +23,18 @@ def detect_cpu_vendor() -> str:
 
 def detect_gpu_vendor() -> str:
     """
-    Best-effort primary GPU vendor via WMI. Windows-only caller (matches the
-    existing WMI fallback pattern in utils/sys_info.py's _get_gpu_info).
+    Best-effort primary GPU vendor via CIM. Windows-only caller.
     Returns 'NVIDIA', 'AMD', 'Intel', or 'Unknown'.
+
+    Was a bare `wmic path win32_videocontroller get Name /format:csv`, which
+    swallowed FileNotFoundError and returned 'Unknown'. On current Windows 11
+    wmic is gone, so this silently returned 'Unknown' on every new machine --
+    which quietly rerouted the driver buttons to the wrong vendor's page (or
+    to no Intel auto-install) with nothing on screen to say why.
     """
-    try:
-        result = subprocess.run(
-            ["wmic", "path", "win32_videocontroller", "get", "Name", "/format:csv"],
-            capture_output=True, text=True, timeout=5,
-        )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return "Unknown"
+    names = " ".join(row["Name"] for row in cim_query("Win32_VideoController", ["Name"]))
+    output = names.lower()
 
-    if result.returncode != 0:
-        return "Unknown"
-
-    output = result.stdout.lower()
     if "nvidia" in output:
         return "NVIDIA"
     if "amd" in output or "radeon" in output:

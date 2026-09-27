@@ -10,6 +10,8 @@ import platform
 import subprocess
 import re
 
+from utils.cim_query import cim_query
+
 
 # OEM placeholder strings that should be filtered out
 OEM_PLACEHOLDERS = {
@@ -71,7 +73,7 @@ def get_smbios_info() -> dict:
 
 
 def _query_windows_smbios() -> dict:
-    """Extract SMBIOS data on Windows via WMIC / PowerShell."""
+    """Extract SMBIOS data on Windows via CIM (Get-CimInstance, wmic fallback)."""
     info = {
         "system_manufacturer": "",
         "system_product": "",
@@ -81,52 +83,23 @@ def _query_windows_smbios() -> dict:
         "board_serial": "",
     }
 
-    # ---- WMIC queries (works on most Windows versions) ----
-    queries = {
-        # Type 001: System Information
-        "system": {
-            "cmd": ["wmic", "csproduct", "get", "Vendor,Name,UUID", "/format:csv"],
-            "fields": {"Vendor": "system_manufacturer", "Name": "system_product", "UUID": "system_uuid"},
-        },
-        # Type 002: Baseboard Information
-        "baseboard": {
-            "cmd": ["wmic", "baseboard", "get", "Manufacturer,Product,SerialNumber", "/format:csv"],
-            "fields": {"Manufacturer": "board_manufacturer", "Product": "board_product",
-                       "SerialNumber": "board_serial"},
-        },
-    }
+    # Type 001: System Information
+    for row in cim_query(
+        "Win32_ComputerSystemProduct", ["Vendor", "Name", "UUID"], timeout=10
+    ):
+        info["system_manufacturer"] = row["Vendor"]
+        info["system_product"] = row["Name"]
+        info["system_uuid"] = row["UUID"]
+        break
 
-    for qkey, qdef in queries.items():
-        try:
-            result = subprocess.run(
-                qdef["cmd"], capture_output=True, text=True, timeout=10,
-                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
-            )
-            if result.returncode == 0:
-                lines = [l.strip() for l in result.stdout.strip().split("\n") if l.strip()]
-                if len(lines) >= 2:
-                    headers = [h.strip() for h in lines[0].split(",")]
-                    values = [v.strip() for v in lines[1].split(",")]
-                    row = dict(zip(headers, values))
-                    for csv_key, info_key in qdef["fields"].items():
-                        if csv_key in row:
-                            info[info_key] = row[csv_key]
-        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-            pass
-
-    # ---- PowerShell fallback for UUID if WMIC failed ----
-    if not info["system_uuid"]:
-        try:
-            result = subprocess.run(
-                ["powershell", "-Command",
-                 "(Get-CimInstance -ClassName Win32_ComputerSystemProduct).UUID"],
-                capture_output=True, text=True, timeout=10,
-                creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                info["system_uuid"] = result.stdout.strip()
-        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
-            pass
+    # Type 002: Baseboard Information
+    for row in cim_query(
+        "Win32_BaseBoard", ["Manufacturer", "Product", "SerialNumber"], timeout=10
+    ):
+        info["board_manufacturer"] = row["Manufacturer"]
+        info["board_product"] = row["Product"]
+        info["board_serial"] = row["SerialNumber"]
+        break
 
     return info
 

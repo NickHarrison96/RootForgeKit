@@ -148,9 +148,19 @@ class CommandBuilder:
                     "medium",
                 ),
                 # ---- Disk Health Check ----
+                # Get-CimInstance, not `wmic diskdrive get ...`. wmic was
+                # removed from Windows 11 24H2+ and is no longer available as a
+                # Feature on Demand, so on a current machine the wmic form just
+                # printed "'wmic' is not recognized" and exited non-zero. WMI
+                # itself is unaffected -- only the CLI front-end was deleted.
                 "disk_health": (
-                    "wmic diskdrive get Status,Model,Size",
-                    "Query disk drive health status via WMI",
+                    ps_encoded_command(
+                        "Get-CimInstance -ClassName Win32_DiskDrive | "
+                        "Select-Object Status, Model, "
+                        "@{n='SizeGB';e={[math]::Round($_.Size / 1GB, 1)}} | "
+                        "Format-Table -AutoSize"
+                    ),
+                    "Query disk drive health status, model and capacity",
                     "low",
                 ),
                 # ---- Network Diagnostics ----
@@ -178,9 +188,16 @@ class CommandBuilder:
                     "high",
                 ),
                 # ---- GPU Info ----
+                # Get-CimInstance, not `wmic path win32_videocontroller get ...`
+                # -- same removal as disk_health above.
                 "gpu_info": (
-                    "wmic path win32_videocontroller get Name,DriverVersion,AdapterRAM,Status",
-                    "Query GPU adapter details via WMI",
+                    ps_encoded_command(
+                        "Get-CimInstance -ClassName Win32_VideoController | "
+                        "Select-Object Name, DriverVersion, Status, "
+                        "@{n='VRAM_GB';e={[math]::Round($_.AdapterRAM / 1GB, 1)}} | "
+                        "Format-Table -AutoSize"
+                    ),
+                    "Query GPU adapter details via CIM",
                     "low",
                 ),
                 # ---- Process List ----
