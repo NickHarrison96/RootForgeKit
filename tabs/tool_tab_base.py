@@ -242,11 +242,30 @@ class ToolTabBase(QWidget):
         root.setSpacing(0)
 
         header = QHBoxLayout()
+        header.setSpacing(6)
         title_lbl = QLabel(title)
         title_lbl.setObjectName("TabSectionTitle")
         title_lbl.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
         header.addWidget(title_lbl)
         header.addStretch()
+
+        # The arrows match CollapsibleSection's own glyphs (▼ open, ▶ shut),
+        # so the two read as the same control applied to everything.
+        self.collapse_all_btn = QPushButton("▼  Collapse all")
+        self.collapse_all_btn.setObjectName("ToolToggleBtn")
+        self.collapse_all_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.collapse_all_btn.setToolTip("Close every category on this tab")
+        self.collapse_all_btn.clicked.connect(
+            lambda _checked=False: self.set_all_sections(False))
+        header.addWidget(self.collapse_all_btn)
+
+        self.expand_all_btn = QPushButton("▶  Expand all")
+        self.expand_all_btn.setObjectName("ToolToggleBtn")
+        self.expand_all_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.expand_all_btn.setToolTip("Open every category on this tab")
+        self.expand_all_btn.clicked.connect(
+            lambda _checked=False: self.set_all_sections(True))
+        header.addWidget(self.expand_all_btn)
 
         self.refresh_btn = QPushButton("⟳  Refresh statuses")
         self.refresh_btn.setObjectName("ToolRefreshBtn")
@@ -331,6 +350,14 @@ class ToolTabBase(QWidget):
         """Deal the collected sections into the grid, then fill the page."""
         self._apply_grid()
         self._page_layout.addStretch()
+
+    def set_all_sections(self, expanded: bool) -> None:
+        """Open or close every category on this tab at once."""
+        for section in self._sections:
+            section.set_expanded(expanded)
+        verb = "Expanded" if expanded else "Collapsed"
+        self._log(f"[GRID] {verb} all {len(self._sections)} categories.",
+                  INFO)
 
     def _column_count(self) -> int:
         if not self._sections:

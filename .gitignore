@@ -102,14 +102,28 @@ RootForgeKit-*.zip
 # vocabularies, issue-tracker wiring, local tool state). Useful to whoever
 # maintains the project, noise — or a roadmap leak — to everyone else.
 
-AGENTS.md
-CLAUDE.md
-docs/agents/
+# Assistant-owned dot-directories: Claude Code, Kilo, Gemini CLI, Cursor,
+# Copilot, Windsurf, Aider, OpenCode, Amp. One rule for the whole family —
+# an assistant's workspace is machine-local state, never source.
 .claude/
 .kilo/
-.agents/
+.gemini/
 .cursor/
+.copilot/
+.windsurf/
+.aider*
+.opencode/
+.agents/
 .scratch/
+amp/
+
+# Assistant-authored markdown: AGENTS.md / CLAUDE.md / GEMINI.md / KILO.md
+# are per-machine instructions, and anything an assistant writes under
+# docs/ is scratch. README.md is the one public-facing document and stays.
+*.md
+!README.md
+
+docs/agents/
 
 # =============================================================================
 # pytmobiledevice3 project — maintained separately, lives outside this repo

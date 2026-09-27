@@ -10,9 +10,11 @@
 #                   confirmation + elevation gates that class applies).
 # =============================================================================
 
+from components.collapsible_section import CollapsibleSection
 from tabs.tool_tab_base import ToolTabBase
 
-# -- winget app catalogue: (key, glyph, name, description, winget_id) --------
+# -- winget app catalogue: (key, glyph, name, expanded, winget_id) -----------
+# The `glyph` is the SECTION's icon; every card in it inherits it.
 APPS = [
     ("dev", "💻", "Development", True, [
         ("app_claude",    "Claude Code",     "Anthropic's terminal coding agent.",
@@ -25,6 +27,8 @@ APPS = [
          "GitHub.GitHubDesktop"),
         ("app_git",       "Git",             "Distributed version control.",
          "Git.Git"),
+        ("app_python",    "Python",          "Latest Python interpreter, with pip and venv.",
+         "Python.Python.3.14"),
         ("app_msys2",     "MSYS2",           "Unix-like shell, GCC toolchain, pacman.",
          "MSYS2.MSYS2"),
     ]),
@@ -33,6 +37,12 @@ APPS = [
          "Microsoft.WindowsTerminal"),
         ("app_7zip",      "7-Zip",            "Archive manager with high compression.",
          "7zip.7zip"),
+        ("app_reshack",   "Resource Hacker",  "View and edit the resources inside any Win32 executable.",
+         "AngusJohnson.ResourceHacker"),
+    ]),
+    ("web", "🌐", "Browsers", False, [
+        ("app_chrome",    "Google Chrome", "Google's browser, with profile and password sync.",
+         "Google.Chrome"),
     ]),
     ("com", "📡", "Communication & Media", False, [
         ("app_discord",   "Discord",   "Voice, video and text chat.",
@@ -115,6 +125,24 @@ LINKS = [
 ]
 
 
+# -- toolchains that winget installs but belong under Runtimes ---------------
+# (key, name, description, winget_id)
+TOOLCHAIN_APPS = [
+    ("app_platformtools", "Android Platform-Tools",
+     "adb, fastboot and friends — what Android debugging and sideloading need.",
+     "Google.PlatformTools"),
+]
+
+# -- tools with no winget package: shown as a link, never as an install ------
+# (key, glyph, name, description, url)
+GAMING_LINKS = [
+    ("link_cheatengine", "🎯", "Cheat Engine",
+     "Memory scanner and editor for running games. Not in winget — opens the "
+     "official download page.",
+     "https://cheatengine.org/"),
+]
+
+
 class TechToolsTab(ToolTabBase):
     """Technician utilities: app management, diagnostics, repair, reference."""
 
@@ -132,10 +160,17 @@ class TechToolsTab(ToolTabBase):
 
     def _build(self) -> None:
         # ---- Apps -----------------------------------------------------
+        sections: dict[str, CollapsibleSection] = {}
         for key, glyph, name, expanded, entries in APPS:
             section = self.add_section(f"{glyph}  {name}", expanded=expanded)
+            sections[key] = section
             for app_key, app_name, desc, winget_id in entries:
                 self.add_app_card(section, app_key, glyph, app_name, desc, winget_id)
+
+        # Cheat Engine has no winget package, so it can't be an install card —
+        # hand the user the official download instead.
+        for key, glyph, name, desc, url in GAMING_LINKS:
+            self.add_url_card(sections["game"], key, glyph, name, desc, url)
 
         # ---- Diagnostics ---------------------------------------------
         section = self.add_section("🩺  Diagnostics", expanded=True)
@@ -151,6 +186,8 @@ class TechToolsTab(ToolTabBase):
 
         # ---- Runtimes / drivers --------------------------------------
         section = self.add_section("🧩  Runtimes, Toolchains & Drivers")
+        for app_key, app_name, desc, winget_id in TOOLCHAIN_APPS:
+            self.add_app_card(section, app_key, "🧩", app_name, desc, winget_id)
         for cmd_key, glyph, name, desc in RUNTIMES:
             self.add_command_card(section, cmd_key, glyph, name, desc)
         self.add_batch_button(

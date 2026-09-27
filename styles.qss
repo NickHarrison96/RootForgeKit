@@ -494,8 +494,10 @@ QPushButton#ToolRunBtn[risk="high"]:hover {
     color: #ff5252;
 }
 
-/* Header-row rescan of installed packages */
-QPushButton#ToolRefreshBtn {
+/* Header-row actions: rescanning installed packages, and the
+   collapse-all / expand-all controls that apply to every category. */
+QPushButton#ToolRefreshBtn,
+QPushButton#ToolToggleBtn {
     background-color: #161b22;
     color: #8b949e;
     border: 1px solid #30363d;
@@ -505,13 +507,15 @@ QPushButton#ToolRefreshBtn {
     font-weight: 600;
 }
 
-QPushButton#ToolRefreshBtn:hover {
+QPushButton#ToolRefreshBtn:hover,
+QPushButton#ToolToggleBtn:hover {
     background-color: #1c2333;
     border-color: #00e5ff;
     color: #00e5ff;
 }
 
-QPushButton#ToolRefreshBtn:disabled {
+QPushButton#ToolRefreshBtn:disabled,
+QPushButton#ToolToggleBtn:disabled {
     background-color: #161b22;
     border-color: #21283b;
     color: #484f58;
