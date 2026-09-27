@@ -190,11 +190,44 @@ class CommandBuilder:
                 # ---- GPU Info ----
                 # Get-CimInstance, not `wmic path win32_videocontroller get ...`
                 # -- same removal as disk_health above.
+                #
+                # VRAM comes from the display-class registry rather than
+                # Win32_VideoController.AdapterRAM, which is a uint32 and so
+                # reports every card with 4 GB or more as exactly 4095 MB. The
+                # registry value is a QWORD and is exact. The registry key is
+                # matched back to the live adapter on VEN_/DEV_ so that driver
+                # entries left behind by removed hardware are not listed as if
+                # the card were still present, and adapters with no dedicated
+                # memory (integrated GPUs) report '-' rather than a wrong size.
                 "gpu_info": (
                     ps_encoded_command(
-                        "Get-CimInstance -ClassName Win32_VideoController | "
-                        "Select-Object Name, DriverVersion, Status, "
-                        "@{n='VRAM_GB';e={[math]::Round($_.AdapterRAM / 1GB, 1)}} | "
+                        "$cls = 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Class\\"
+                        "{4d36e968-e325-11ce-bfc1-08002be10318}'; "
+                        "$reg = @{}; "
+                        "Get-ChildItem $cls -ErrorAction SilentlyContinue | ForEach-Object { "
+                        "$p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue; "
+                        "if ($p.MatchingDeviceId) { "
+                        "$k = (($p.MatchingDeviceId -split '[\\\\&]') | "
+                        "Where-Object { $_ -match '^(ven|dev)_' } | Sort-Object) -join ' '; "
+                        "if ($k) { $reg[$k] = $p.'HardwareInformation.qwMemorySize' } } }; "
+                        "Get-CimInstance Win32_VideoController | ForEach-Object { "
+                        "$id = $_.PNPDeviceID; "
+                        "$k = (($id -split '[\\\\&]') | "
+                        "Where-Object { $_ -match '^(VEN|DEV)_' } | Sort-Object) -join ' '; "
+                        "$vram = $null; if ($k -and $reg.ContainsKey($k)) { $vram = $reg[$k] }; "
+                        "if (-not $vram) { $vram = $_.AdapterRAM }; "
+                        "[PSCustomObject]@{ "
+                        "Name = $_.Name; "
+                        "Vendor = if ($id -match 'VEN_10DE') { 'NVIDIA' } "
+                        "elseif ($id -match 'VEN_(1002|1022)') { 'AMD' } "
+                        "elseif ($id -match 'VEN_8086') { 'Intel' } "
+                        "else { 'Other' }; "
+                        "Driver = $_.DriverVersion; "
+                        "Status = $_.Status; "
+                        "VRAM_GB = if ($vram) { [math]::Round($vram / 1GB, 1) } else { '-' }; "
+                        "Mode = if ($_.CurrentHorizontalResolution) { "
+                        "'{0}x{1}@{2}Hz' -f $_.CurrentHorizontalResolution, "
+                        "$_.CurrentVerticalResolution, $_.CurrentRefreshRate } else { '-' } } } | "
                         "Format-Table -AutoSize"
                     ),
                     "Query GPU adapter details via CIM",

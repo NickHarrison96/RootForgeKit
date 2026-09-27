@@ -13,6 +13,8 @@ try:
 except ImportError:
     psutil = None
 
+from utils import windows_hw
+
 
 def get_formatted_uptime() -> str:
     if not psutil:
@@ -85,6 +87,13 @@ def get_cpu_info() -> str:
 def get_os_details() -> str:
     """Full detailed OS name, edition, and build version."""
     if platform.system() == "Windows":
+        # The 10-vs-11 split is taken from CurrentBuildNumber rather than
+        # ProductName, which Microsoft has left reading "Windows 10 ..." on
+        # Windows 11 machines, and rather than CurrentMajorVersionNumber, which
+        # is 10 on Windows 11 regardless. Build number is the authority.
+        label = windows_hw.windows_version_label()
+        if label:
+            return label
         try:
             import winreg
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion") as key:
@@ -118,20 +127,21 @@ def get_os_details() -> str:
 def get_host_hardware() -> str:
     """Motherboard / Host model info."""
     if platform.system() == "Windows":
-        try:
-            import winreg
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\BIOS") as key:
-                mfg = winreg.QueryValueEx(key, "BaseBoardManufacturer")[0].strip()
-                prod = winreg.QueryValueEx(key, "BaseBoardProduct")[0].strip()
-                if mfg or prod:
-                    return f"{mfg} {prod}".strip()
-        except Exception:
-            pass
+        label = windows_hw.baseboard_label()
+        if label:
+            return label
     return platform.node() or "PC"
 
 
 def get_display_resolution() -> str:
-    """Screen resolution."""
+    """Screen resolution in physical pixels."""
+    if platform.system() == "Windows":
+        size = windows_hw.display_resolution()
+        if size:
+            w, h = size
+            monitors = windows_hw.display_count()
+            mon_str = f" ({monitors} displays)" if monitors > 1 else ""
+            return f"{w}x{h}{mon_str}"
     try:
         user32 = ctypes.windll.user32
         w = user32.GetSystemMetrics(0)
@@ -159,14 +169,16 @@ def get_theme_info() -> str:
 def get_primary_gpu() -> str:
     """Quick lookup for primary GPU name."""
     if platform.system() == "Windows":
-        try:
-            import winreg
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\0000") as key:
-                name = winreg.QueryValueEx(key, "DriverDesc")[0].strip()
-                if name:
-                    return name
-        except Exception:
-            pass
+        # Was reading `Control\Class\{4d36e968-...}\0000` directly, which is
+        # simply the first display-class key that exists -- not the primary
+        # adapter. That directory keeps driver entries for hardware that has
+        # been removed, so on a machine that had ever had an NVIDIA card this
+        # reported the NVIDIA card indefinitely after it was uninstalled, and
+        # on a hybrid laptop it reported whichever adapter enumerated first.
+        # Presence now comes from CIM, with the registry used only for VRAM.
+        gpu = windows_hw.primary_gpu()
+        if gpu:
+            return gpu["name"]
     return "Unknown GPU"
 
 

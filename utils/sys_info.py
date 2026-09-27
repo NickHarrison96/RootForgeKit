@@ -13,6 +13,7 @@ import psutil
 from PySide6.QtCore import QThread, Signal
 
 from utils.cim_query import cim_query
+from utils.windows_hw import baseboard_info, enumerate_gpus, sanitize_firmware_value
 
 
 class SystemInfoWorker(QThread):
@@ -115,11 +116,16 @@ class SystemInfoWorker(QThread):
         # alphabetically, so AdapterRAM happened to land first. It also broke
         # outright on current Windows 11, where wmic no longer exists.
         if not gpus and system == "Windows":
-            for row in cim_query("Win32_VideoController", ["Name", "AdapterRAM"]):
-                vram_bytes = int(row["AdapterRAM"]) if row["AdapterRAM"].isdigit() else 0
+            # `AdapterRAM` is a uint32, so it cannot report more than ~4 GiB:
+            # an 8 GB card reads back as 4095 MB. enumerate_gpus() recovers the
+            # true figure from the display-class registry, and is joined to CIM
+            # on the PCI device id so that registry entries left behind by
+            # removed hardware are not reported as present.
+            for gpu in enumerate_gpus():
+                vram_bytes = gpu.get("vram_bytes") or 0
                 gpus.append({
-                    "name": row["Name"] or "Unknown GPU",
-                    "vram_total_mb": str(vram_bytes // (1024 * 1024)),
+                    "name": gpu["name"] or "Unknown GPU",
+                    "vram_total_mb": str(vram_bytes // (1024 * 1024)) if vram_bytes else "N/A",
                     "vram_used_mb": "N/A",
                     "temp_c": "N/A",
                 })
@@ -239,16 +245,21 @@ class SystemInfoWorker(QThread):
         system = platform.system()
 
         if system == "Windows":
-            # Baseboard
-            for row in cim_query("Win32_BaseBoard", ["Manufacturer", "Product"]):
-                info["manufacturer"] = row["Manufacturer"] or "N/A"
-                info["product"] = row["Product"] or "N/A"
-                break
-            # BIOS
+            # Baseboard and BIOS. Values go through the placeholder filter:
+            # consumer laptops routinely report "Default string",
+            # "To be filled by O.E.M." or a bare board id like "0CD9V2M" here,
+            # and the old positional wmic parser would have shown that to the
+            # user as if it were a motherboard name.
+            board = baseboard_info()
+            info["manufacturer"] = board.get("manufacturer") or "N/A"
+            info["product"] = board.get("product") or "N/A"
             for row in cim_query("Win32_BIOS", ["Manufacturer", "SMBIOSBIOSVersion"]):
-                info["bios_vendor"] = row["Manufacturer"] or "N/A"
-                info["bios_version"] = row["SMBIOSBIOSVersion"] or "N/A"
+                info["bios_vendor"] = sanitize_firmware_value(row.get("Manufacturer")) or "N/A"
+                info["bios_version"] = sanitize_firmware_value(row.get("SMBIOSBIOSVersion")) or "N/A"
                 break
+            else:
+                info["bios_vendor"] = info.get("bios_vendor") or "N/A"
+                info["bios_version"] = info.get("bios_version") or "N/A"
 
         elif system == "Linux":
             # Read from /sys/devices/virtual/dmi/id/ (requires root)

@@ -10,33 +10,22 @@ import platform
 import subprocess
 import re
 
+from utils import windows_hw
 from utils.cim_query import cim_query
 
 
-# OEM placeholder strings that should be filtered out
-OEM_PLACEHOLDERS = {
-    "to be filled by o.e.m.",
-    "to be filled by o.e.m",
-    "default string",
-    "not specified",
-    "not available",
-    "system manufacturer",
-    "system product name",
-    "base board manufacturer",
-    "base board product name",
-    "none",
-    "n/a",
-    "unknown",
-    "",
-}
+# OEM placeholder strings that should be filtered out.
+# Kept as a name for backwards compatibility; the list itself now lives in
+# utils/windows_hw.py alongside the rest of the firmware-quirk handling, so the
+# status bar, the hardware cards and the host ID all agree on what counts as
+# placeholder text. It was previously a subset of that list, which meant the
+# status bar and the hardware cards could disagree about the same string.
+OEM_PLACEHOLDERS = set(windows_hw._PLACEHOLDERS)
 
 
 def _clean_value(value: str) -> str:
     """Strip whitespace and filter OEM placeholder strings."""
-    cleaned = value.strip()
-    if cleaned.lower() in OEM_PLACEHOLDERS:
-        return ""
-    return cleaned
+    return windows_hw.sanitize_firmware_value(value)
 
 
 def get_smbios_info() -> dict:
@@ -256,7 +245,16 @@ def get_display_summary(smbios_data: dict | None = None) -> dict:
     if smbios_data.get("board_product"):
         board_parts.append(smbios_data["board_product"])
 
-    board_label = " ".join(board_parts) if board_parts else "Unknown Motherboard"
+    if board_parts:
+        board_label = " ".join(board_parts)
+    else:
+        # A laptop whose baseboard fields are all OEM placeholders hashes to
+        # empty strings (correctly -- the hash must stay stable, since it is
+        # the licensing host ID). For *display*, though, "Unknown Motherboard"
+        # is useless, so fall back to the machine's marketing model.
+        # Deliberately display-only: feeding the model into get_smbios_info()
+        # would change every existing host ID on such machines.
+        board_label = windows_hw.baseboard_label() or "Unknown Motherboard"
     host_id_full = compute_host_id(smbios_data)
     host_id_short = host_id_full[:16] if host_id_full != "UNKNOWN-HWID" else "UNKNOWN"
 
