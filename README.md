@@ -1,14 +1,14 @@
 # 🚀 RootForgeKit // PRE ALPHA // 
 
-**A cross-platform system utility, diagnostics and mobile-forensics suite.**
+**A cross-platform system utility and diagnostics suite.**
 Windows · macOS · Linux — built with PySide6.
 By KushNick420.
 
 > ⚠️ **Super early-access, pre-alpha development build.** RootForgeKit is unfinished software under active development — expect bugs, breaking changes, half-built features, and rough edges. It is **not** production-ready. Use it on hardware you can afford to experiment with, back up your devices first, and proceed at your own risk. Feedback and issue reports are welcome.
 
 ---
-RootForgeKit bundles the tools a technician actually reaches for — hardware health, system
-repair, iOS and Android device work — into one dark-themed, 3uTools-inspired desktop app,
+RootForgeKit bundles the tools a technician actually reaches for — hardware health and
+system repair — into one dark-themed, 3uTools-inspired desktop app,
 instead of a drawer full of separate CLIs.
 
 ---
@@ -21,36 +21,23 @@ with hardware spec cards for CPU, GPU, RAM, storage, network and motherboard/BIO
 **🩺 Hardware Health** — battery telemetry, partition/storage breakdown, and SMART
 operational status reporting.
 
-**⚙️ Prerequisites** — collapsible per-OS requirement checklists that install what's
-missing, including auto-downloading Google Platform Tools (`adb`/`fastboot`) into a local
-`bin/` and patching `PATH`.
-
-**🔧 Tech Tools / 🎮 Gamer Tools** — disk health, network diagnostics, DNS flush, system
-file checker, process monitor, GPU details, and batch silent-install profiles via `winget`
-/ `brew`. A Windows/macOS/Linux target selector shows each platform's commands; commands
-that can't run on the current host are shown for reference but blocked from executing.
-
-**📱 iOS Tools** — full iOS 17+/18 support over a RemoteXPC **RSD tunnel**:
-- Device control and settings over lockdown — restart/shutdown/sleep, device name, date,
-  language, locale, battery vitals, Assistive Touch and WiFi toggles, activation status
-- **Forensic acquisition** — Logical (mobilebackup2), Logical+ (backup + camera media +
-  crash reports + app inventory → `.tar`), and PRFS
-- **DVT instruments** — process list, screenshot, system monitor, location simulation,
-  app launcher, power assertion
-- Crash log explorer, files & apps manager, developer mode + DDI mounting, IPSW restore,
-  live syslog streaming
-
-**🤖 Android Tools** — device info, ADB file explorer, APK install, screenshot capture,
-logcat streaming, reboot to bootloader/recovery, `adb` backup, and wireless ADB.
+**🔧 Tech Tools / 🎮 Gamer Tools** — two card lists over a live console. Winget-installed
+apps report their real state (installed / update available / missing) from a single
+background scan, and the action button follows it: **Install**, **Update** or **Launch**.
+Tool cards run actual commands — disk health, network diagnostics, process monitor, GPU
+details, DNS flush, temp cleanup, System File Checker, power-plan tuning — through the
+same confirmation and elevation gates, plus batch silent-install profiles via `winget`
+/ `brew`. Reference links open the vendor driver pages and Windows' own settings panels.
 
 ---
 
 ## Requirements
 
 - **Python 3.10+**
-- A physical device for the mobile features (iOS work needs Apple drivers; Android needs
-  USB debugging enabled)
-- **Administrator/root** is required only to create the iOS 17+ tunnel interface
+- **Windows** is the verified baseline. The macOS and Linux code paths exist but ship an
+  empty command registry — see `utils/command_builder.py`.
+- **Administrator** is required only for the handful of tools that say so (System File
+  Checker, WSL2, machine-scope installs). Everything else runs unelevated.
 
 ## Getting started
 
@@ -76,13 +63,6 @@ rather than onefile:
 pip install pyinstaller
 python -m PyInstaller RootForgeKit.spec --noconfirm
 ```
-
-### iOS 17+ setup
-
-Developer services on iOS 17 and newer are only reachable through an RSD tunnel. In
-**iOS Tools → Developer Setup & DDI**, work down the readiness panel: enable Developer
-Mode, auto-mount the DDI, then start the tunnel (this prompts for elevation). When
-"Developer services" reads green, the DVT tools are ready.
 
 ---
 
@@ -152,19 +132,18 @@ Mode, auto-mount the DDI, then start the tunnel (this prompts for elevation). Wh
 
 ### Earlier
 Baseline application: core architecture and role-gated auth, persistent HWID status bar,
-Overview/Hardware Health/Prerequisites/Tech/Gamer tabs, iOS and Android tool suites, batch
+Overview/Hardware Health/Prerequisites/Tech/Gamer tabs, iOS tool suites, batch
 package installers, and the initial iForensics feature ports.
 
 ---
 
 ## Project status
 
-**Pre-Alpha v0.5.** Actively developed. iOS features are verified against a physical iPad
-on iOS 18.7.9; the macOS and Linux code paths are implemented but have had less hardware
-testing than Windows.
+**Pre-Alpha v0.5.** Actively developed. Windows is the verified baseline; the macOS and
+Linux code paths are implemented but have had less hardware testing.
 
 ## Acknowledgements
 
-iOS device communication is powered by
-[pymobiledevice3](https://github.com/doronz88/pymobiledevice3). Android tooling uses
-Google's Platform Tools. iOS forensic features were ported from the iForensics Toolkit.
+The iOS/pymobiledevice3 work this project grew out of now lives in its own checkout and is
+maintained separately — see [pymobiledevice3](https://github.com/doronz88/pymobiledevice3).
+iOS forensic features were originally ported from the iForensics Toolkit.

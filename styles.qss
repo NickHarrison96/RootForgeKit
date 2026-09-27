@@ -44,6 +44,33 @@ QWidget#StatusRightWidget {
     background-color: transparent;
 }
 
+QWidget#StatusContainer,
+QWidget#StatusOpWidget {
+    background-color: transparent;
+}
+
+QLabel#StatusOpLabel {
+    background-color: transparent;
+    font-size: 11px;
+}
+
+/* Centre-of-bar operation progress. The chunk colour matches the cyan used
+   for in-flight captions; the bar itself sits on the same near-black the
+   status bar uses so it reads as part of the bar, not a floating widget. */
+QProgressBar#StatusBarProgress {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 3px;
+    min-height: 6px;
+    max-height: 6px;
+    text-align: center;
+}
+
+QProgressBar#StatusBarProgress::chunk {
+    background-color: #00e5ff;
+    border-radius: 2px;
+}
+
 /* ============================================================
    TAB WIDGET
    ============================================================ */
@@ -394,47 +421,6 @@ QPushButton#TerminalAbortBtn:disabled {
 }
 
 /* ============================================================
-   PREREQUISITE CARDS
-   ============================================================ */
-
-QFrame#PrereqCard {
-    background-color: #1c2333;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-}
-
-QFrame#PrereqCard:hover { border-color: #484f58; }
-
-QLabel#PrereqName { color: #e6edf3; }
-QLabel#PrereqDesc { color: #8b949e; }
-
-QPushButton#PrereqInstallBtn {
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:0,
-        stop:0 #00e5ff, stop:1 #536dfe
-    );
-    color: #0d1117;
-    border: none;
-    border-radius: 5px;
-    font-weight: 700;
-    font-size: 11px;
-    padding: 5px 12px;
-}
-
-QPushButton#PrereqInstallBtn:hover {
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:0,
-        stop:0 #33ecff, stop:1 #7986cb
-    );
-}
-
-QPushButton#PrereqInstallBtn:disabled {
-    background: #21283b;
-    color: #4caf50;
-    border: 1px solid #30363d;
-}
-
-/* ============================================================
    TOOL CARDS (Tech & Gamer Tabs)
    ============================================================ */
 
@@ -449,8 +435,21 @@ QFrame#ToolCard:hover {
     background-color: #21283b;
 }
 
+QLabel#ToolCardGlyph {
+    background-color: transparent;
+    color: #00e5ff;
+}
+
 QLabel#ToolCardName { color: #e6edf3; }
 QLabel#ToolCardDesc { color: #8b949e; }
+
+/* Visible outcome line under the description. The per-row colour is set
+   inline from ToolCard.STATUS so it tracks the status glyph; this only
+   supplies the base font and spacing. */
+QLabel#ToolCardStatus {
+    background-color: transparent;
+    font-weight: 600;
+}
 
 QPushButton#ToolRunBtn {
     background-color: #21283b;
@@ -459,7 +458,7 @@ QPushButton#ToolRunBtn {
     border-radius: 5px;
     font-weight: 700;
     font-size: 11px;
-    padding: 3px;
+    padding: 3px 6px;
 }
 
 QPushButton#ToolRunBtn:hover {
@@ -467,151 +466,55 @@ QPushButton#ToolRunBtn:hover {
     color: #0d1117;
 }
 
-/* ---- Compact tool buttons (Tech tab OS pages) ---- */
-QPushButton#ToolItemBtn {
-    background-color: #1c2333;
-    color: #e6edf3;
-    border: 1px solid #30363d;
-    border-radius: 5px;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 10px;
-    text-align: left;
+QPushButton#ToolRunBtn:disabled {
+    background-color: #161b22;
+    border-color: #21283b;
+    color: #484f58;
 }
 
-QPushButton#ToolItemBtn:hover {
-    background-color: #21283b;
-    border-color: #00e5ff;
-    color: #00e5ff;
+/* Risk rail on the left edge — same vocabulary the old compact buttons used,
+   so a destructive action is recognisable at a glance. */
+QPushButton#ToolRunBtn[risk="medium"] {
+    border-left: 3px solid #ffc107;
 }
 
-QPushButton#ToolItemBtn:pressed {
-    background-color: #0d1117;
-    border-color: #536dfe;
+QPushButton#ToolRunBtn[risk="medium"]:hover {
+    background-color: rgba(255, 193, 7, 0.14);
+    border-color: #ffc107;
+    color: #ffc107;
 }
 
-QPushButton#ToolItemBtn[risk="high"] {
+QPushButton#ToolRunBtn[risk="high"] {
     border-left: 3px solid #ff5252;
 }
 
-QPushButton#ToolItemBtn[risk="high"]:hover {
-    background-color: rgba(255, 82, 82, 0.12);
+QPushButton#ToolRunBtn[risk="high"]:hover {
+    background-color: rgba(255, 82, 82, 0.14);
     border-color: #ff5252;
     color: #ff5252;
 }
 
-QPushButton#ToolItemBtn[risk="medium"] { border-left: 3px solid #ffc107; }
-
-/* ---- OS selector (Windows / macOS / Linux) ---- */
-QPushButton#OsSelectBtn {
+/* Header-row rescan of installed packages */
+QPushButton#ToolRefreshBtn {
     background-color: #161b22;
     color: #8b949e;
     border: 1px solid #30363d;
     border-radius: 5px;
-    padding: 5px 16px;
+    padding: 4px 12px;
     font-size: 11px;
-    font-weight: 700;
-    min-width: 92px;
-}
-
-QPushButton#OsSelectBtn:hover {
-    background-color: #1c2333;
-    color: #e6edf3;
-    border-color: #484f58;
-}
-
-QPushButton#OsSelectBtn:checked {
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:0,
-        stop:0 #00e5ff, stop:1 #536dfe
-    );
-    color: #0d1117;
-    border: none;
-}
-
-QLabel#OsMismatchNotice {
-    color: #f0a500;
-    background-color: rgba(240, 165, 0, 0.07);
-    border: 1px solid rgba(240, 165, 0, 0.35);
-    border-radius: 5px;
-    padding: 5px 9px;
-    font-size: 10px;
-}
-
-/* ============================================================
-   OPERATION PROGRESS PANEL
-   ============================================================ */
-
-QFrame#ProgressPanel {
-    background-color: #161b22;
-    border: 1px solid #30363d;
-    border-left: 3px solid #00e5ff;
-    border-radius: 8px;
-}
-
-QFrame#ProgressPanel[state="ok"]    { border-left-color: #00e676; }
-QFrame#ProgressPanel[state="error"] { border-left-color: #ff5252; }
-
-QLabel#ProgressTitle   { color: #e6edf3; }
-QLabel#ProgressStatus  { color: #8b949e; }
-QLabel#ProgressElapsed { color: #8b949e; }
-QLabel#ProgressPercent { color: #00e5ff; }
-
-QProgressBar#OperationBar {
-    background-color: #0d1117;
-    border: 1px solid #21283b;
-    border-radius: 5px;
-    text-align: center;
-}
-
-QProgressBar#OperationBar::chunk {
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:0,
-        stop:0 #00e5ff, stop:0.5 #536dfe, stop:1 #00e676
-    );
-    border-radius: 4px;
-}
-
-QPushButton#ProgressLogBtn,
-QPushButton#ProgressCancelBtn {
-    background-color: #21283b;
-    color: #8b949e;
-    border: 1px solid #30363d;
-    border-radius: 4px;
-    padding: 2px 10px;
-    font-size: 10px;
     font-weight: 600;
 }
 
-QPushButton#ProgressLogBtn:hover {
-    color: #e6edf3;
-    border-color: #484f58;
-}
-
-QPushButton#ProgressLogBtn:checked {
-    color: #00e5ff;
+QPushButton#ToolRefreshBtn:hover {
+    background-color: #1c2333;
     border-color: #00e5ff;
+    color: #00e5ff;
 }
 
-QPushButton#ProgressCancelBtn:hover {
-    background-color: #3d1117;
-    color: #ff5252;
-    border-color: #ff5252;
-}
-
-QPushButton#ProgressCancelBtn:disabled {
+QPushButton#ToolRefreshBtn:disabled {
     background-color: #161b22;
-    color: #484f58;
     border-color: #21283b;
-}
-
-QPlainTextEdit#ProgressLog {
-    background-color: #0a0e14;
-    color: #7ee787;
-    border: 1px solid #21283b;
-    border-radius: 5px;
-    padding: 6px;
-    selection-background-color: #264f78;
+    color: #484f58;
 }
 
 /* ============================================================
@@ -673,35 +576,8 @@ QGroupBox::title {
 }
 
 /* ============================================================
-   MOBILE TABS — 3uTools-style Nav & Toolbox
+   MOBILE TABS — quick action rows
    ============================================================ */
-
-/* Nav switcher buttons (iDevice / Toolbox) */
-QPushButton#MobileNavBtn {
-    background-color: #1c2333;
-    color: #8b949e;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    padding: 6px 16px;
-    font-size: 12px;
-    font-weight: 700;
-    min-width: 90px;
-}
-
-QPushButton#MobileNavBtn:hover {
-    background-color: #21283b;
-    color: #e6edf3;
-    border-color: #00e5ff;
-}
-
-QPushButton#MobileNavBtn:checked {
-    background: qlineargradient(
-        x1:0, y1:0, x2:1, y2:0,
-        stop:0 #00e5ff, stop:1 #536dfe
-    );
-    color: #0d1117;
-    border: none;
-}
 
 /* Quick action row buttons (Reboot, Refresh, etc.) */
 QPushButton#MobileQuickBtn {
@@ -720,31 +596,8 @@ QPushButton#MobileQuickBtn:hover {
     color: #00e5ff;
 }
 
-/* Toolbox grid item buttons */
-QPushButton#ToolboxItemBtn {
-    background-color: #1c2333;
-    color: #e6edf3;
-    border: 1px solid #30363d;
-    border-radius: 5px;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 10px;
-    text-align: left;
-}
-
-QPushButton#ToolboxItemBtn:hover {
-    background-color: #21283b;
-    border-color: #00e5ff;
-    color: #00e5ff;
-}
-
-QPushButton#ToolboxItemBtn:pressed {
-    background-color: #0d1117;
-    border-color: #536dfe;
-}
-
 /* ============================================================
-   COLLAPSIBLE REQUIREMENTS SECTION
+   COLLAPSIBLE SECTION
    ============================================================ */
 
 QPushButton#CollapsibleHeader {

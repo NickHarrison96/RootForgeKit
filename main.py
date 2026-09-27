@@ -3,8 +3,7 @@
 # Architecture:
 #   QMainWindow
 #     ├── QTabWidget (central widget)
-#     │     └── Overview, Hardware Health, Prerequisites, Tech, Gamer,
-#     │         iOS, Android
+#     │     └── Overview, Hardware Health, Tech, Gamer
 #     └── PersistentStatusBar (always visible)
 #
 # HWID is queried in a background thread and pushed to the status bar.
@@ -21,11 +20,8 @@ from PySide6.QtGui import QFont, QIcon
 
 from components.status_bar import PersistentStatusBar
 from tabs.overview import OverviewTab
-from tabs.prereqs import PrereqsTab
 from tabs.tech_tools import TechToolsTab
 from tabs.gamer_tools import GamerToolsTab
-from tabs.ios.tab import IosDriverTab
-from tabs.android.tab import AndroidDriverTab
 from tabs.hardware.tab import HardwareHealthTab
 from utils.hwid import get_smbios_info, get_display_summary
 from utils.paths import resource_path
@@ -134,15 +130,18 @@ class RootForgeKitMainWindow(QMainWindow):
             f"RootForgeKit v{APP_VERSION} ({APP_STAGE}) — System Utility & Diagnostic Suite "
             f"(Workers: {self.allocated_cores} Cores)"
         )
-        self.setMinimumSize(1100, 720)
-        self.resize(1280, 800)
-
-        # Center on screen
+        # Design base resolution is 1920x1080. Never open larger than the
+        # screen actually is, and never set a minimum wider than the screen.
         screen = QApplication.primaryScreen()
-        if screen:
-            geo = screen.availableGeometry()
-            self.move((geo.width() - self.width()) // 2,
-                      (geo.height() - self.height()) // 2)
+        geo = screen.availableGeometry() if screen else None
+        base_w = min(1920, geo.width()) if geo else 1920
+        base_h = min(1080, geo.height()) if geo else 1080
+        self.setMinimumSize(min(1440, base_w), min(810, base_h))
+        self.resize(base_w, base_h)
+
+        if geo:
+            self.move(geo.x() + max(0, (geo.width() - base_w) // 2),
+                      geo.y() + max(0, (geo.height() - base_h) // 2))
 
     def _setup_status_bar(self):
         """Attach the persistent status bar (visible on ALL pages)."""
@@ -157,11 +156,8 @@ class RootForgeKitMainWindow(QMainWindow):
 
         self.tabs.addTab(OverviewTab(),       "📊  Overview")
         self.tabs.addTab(HardwareHealthTab(), "🩺  Hardware Health")
-        self.tabs.addTab(PrereqsTab(),        "⚙️  Prerequisites")
         self.tabs.addTab(TechToolsTab(),      "🔧  Tech Tools")
         self.tabs.addTab(GamerToolsTab(),     "🎮  Gamer Tools")
-        self.tabs.addTab(IosDriverTab(),      "📱  iOS Tools")
-        self.tabs.addTab(AndroidDriverTab(),  "🤖  Android Tools")
 
         self.setCentralWidget(self.tabs)
 

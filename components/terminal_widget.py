@@ -120,6 +120,7 @@ class TerminalConsoleWidget(QWidget):
             _on_command_finished only fires for commands that really ran.
         """
         if self._process and self._process.state() != QProcess.ProcessState.NotRunning:
+            self.log("[BUSY] A command is already running — wait for it to finish or press Abort.", "#f0a500")
             QMessageBox.warning(
                 self, "Process Running",
                 "A command is already running. Please wait for it to finish or abort it.",
@@ -182,9 +183,25 @@ class TerminalConsoleWidget(QWidget):
                 return False
 
         # ---- Execute ----
+        # The console is the only record of *why* a command was run once the
+        # confirmation dialog is gone — and with skip_confirm the dialog never
+        # appeared at all. Echo the plain-language purpose above the command.
+        if description:
+            self.log(f"# {description}", "#78909c")
         self._current_command_key = command_key
         self._run_command(command)
         return True
+
+    def log(self, message: str, colour: str = "#c8e6c9") -> None:
+        """Append one labelled, coloured line to the console.
+
+        Public counterpart to _append_output for callers that narrate what
+        they are doing (status scans, link launches, batch runs) rather than
+        stream a child process.
+        """
+        if not message.endswith("\n"):
+            message += "\n"
+        self._append_output(message, colour)
 
     # -------------------------------------------------------------------------
     # Elevation

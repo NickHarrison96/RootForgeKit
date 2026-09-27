@@ -30,7 +30,7 @@ desktop.ini
 # ---- Claude Code local state (machine-specific; not team config) ----
 .claude/settings.local.json
 
-# ---- Downloaded / auto-fetched binaries (re-fetched by Prerequisites tab) ----
+# ---- Downloaded / auto-fetched binaries (re-fetched by the setup flow) ----
 bin/platform-tools/
 
 # ---- Runtime-generated device output (real backups, screenshots, PII) ----
@@ -94,3 +94,27 @@ RootForgeKit-*.zip
 
 # Superpowers SDD scratch workspace
 .superpowers/
+
+# =============================================================================
+# Agent / AI-CLI configuration — internal, not for the public
+# =============================================================================
+# These describe how coding agents work on this repo (instructions, label
+# vocabularies, issue-tracker wiring, local tool state). Useful to whoever
+# maintains the project, noise — or a roadmap leak — to everyone else.
+
+AGENTS.md
+CLAUDE.md
+docs/agents/
+.claude/
+.kilo/
+.agents/
+.cursor/
+.scratch/
+
+# =============================================================================
+# pytmobiledevice3 project — maintained separately, lives outside this repo
+# =============================================================================
+# Moved to Desktop\Relocate. Listed so a stray copy never lands back in git.
+pymobile3_gui/
+build_pymobile3/
+dist_pymobile3/
