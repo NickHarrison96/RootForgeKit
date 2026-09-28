@@ -226,8 +226,11 @@ class SecretSauceTab(ToolTabBase):
             section, "god_mode", "👑", "Enable God Mode",
             "Creates a GodMode folder on the desktop with all system "
             "settings.",
-            "mkdir \"%USERPROFILE%\\Desktop\\GodMode."
-            "{ED7BA470-8E54-465E-825C-9931E9D1D5C7}\"",
+            ps_encoded_command(
+                "New-Item -Path \"$env:USERPROFILE\\Desktop\\"
+                "GodMode.{ED7BA470-8E54-465E-825C-9931E9D1D5C7}\" "
+                "-ItemType Directory -Force"
+            ),
             risk="low",
             skip_confirm=True,
         )
