@@ -833,7 +833,7 @@ class ToolTabBase(QWidget):
             command = (
                 f"winget upgrade --id {winget_id} -e "
                 "--accept-package-agreements --accept-source-agreements "
-                "--force"
+                "--force --silent"
             )
             description = f"Update {name} to the latest version"
             risk, skip = "medium", False
@@ -841,7 +841,7 @@ class ToolTabBase(QWidget):
             command = (
                 f"winget install --id {winget_id} -e "
                 "--accept-package-agreements --accept-source-agreements "
-                "--force"
+                "--force --silent"
             )
             description = f"Install {name} from the winget repository"
             risk, skip = "medium", False
