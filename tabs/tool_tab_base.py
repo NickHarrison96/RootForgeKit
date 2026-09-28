@@ -832,7 +832,8 @@ class ToolTabBase(QWidget):
         elif state == "update":
             command = (
                 f"winget upgrade --id {winget_id} -e "
-                "--accept-package-agreements --accept-source-agreements"
+                "--accept-package-agreements --accept-source-agreements "
+                "--force"
             )
             description = f"Update {name} to the latest version"
             risk, skip = "medium", False

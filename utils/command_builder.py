@@ -130,21 +130,24 @@ class CommandBuilder:
                 # ---- Visual C++ Redistributable ----
                 "vcredist": (
                     "winget upgrade --id Microsoft.VCRedist.2015+.x64 -e "
-                    "--accept-source-agreements --accept-package-agreements",
+                    "--accept-source-agreements --accept-package-agreements "
+                    "--force",
                     "Install/update Visual C++ 2015-2022 Redistributable (x64)",
                     "medium",
                 ),
                 # ---- .NET Runtime ----
                 "dotnet": (
                     "winget upgrade --id Microsoft.DotNet.DesktopRuntime.8 -e "
-                    "--accept-source-agreements --accept-package-agreements",
+                    "--accept-source-agreements --accept-package-agreements "
+                    "--force",
                     "Install/update .NET 8 Desktop Runtime",
                     "medium",
                 ),
                 # ---- DirectX ----
                 "directx": (
                     "winget upgrade --id Microsoft.DirectX -e "
-                    "--accept-source-agreements --accept-package-agreements",
+                    "--accept-source-agreements --accept-package-agreements "
+                    "--force",
                     "Install/update DirectX End-User Runtime",
                     "medium",
                 ),
