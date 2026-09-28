@@ -42,15 +42,19 @@ def ps_encoded_command(script: str) -> str:
 # app starts demanding elevation it doesn't need, which is the exact problem
 # this replaced.
 ADMIN_REQUIRED_KEYS = {
-    "sfc_scan",             # sfc /scannow — refuses to run unelevated
-    "wsl2",                 # dism /online /enable-feature — modifies OS features
-    "vcredist",             # winget machine-scope install
-    "dotnet",               # winget machine-scope install
-    "directx",              # winget machine-scope install
-    "system_update",        # winget upgrade --all — machine-scope packages
-    "activate_enterprise",  # slmgr /ipk|/ato — Windows licensing store
-    "activate_pro",         # slmgr /ipk|/ato — Windows licensing store
-    "dism_server_standard", # dism /online /Set-Edition — verified error 740 unelevated
+    "sfc_scan",                # sfc /scannow — refuses to run unelevated
+    "wsl2",                    # dism /online /enable-feature — modifies OS features
+    "vcredist",                # winget machine-scope install
+    "dotnet",                 # winget machine-scope install
+    "directx",                # winget machine-scope install
+    "system_update",          # winget upgrade --all — machine-scope packages
+    "activate_enterprise",    # slmgr /ipk|/ato — Windows licensing store
+    "activate_pro",           # slmgr /ipk|/ato — Windows licensing store
+    "dism_server_standard",   # dism /online /Set-Edition — verified error 740 unelevated
+    "disable_power_throttling",  # powercfg /setacvalueindex — modifies system power settings
+    "disable_hibernation",    # powercfg /h off — modifies OS power features
+    "disable_cortana",        # REG ADD to HKLM\Policies — requires admin
+    "disable_unwanted_ads",   # REG ADD to HKLM\Policies — requires admin
 }
 
 
@@ -264,6 +268,82 @@ class CommandBuilder:
                     "dism /online /Set-Edition:ServerStandard /ProductKey:W269N-WFGWX-YVC9B-4J6C9-T83GX /AcceptEula",
                     "Set Windows edition to ServerStandard via DISM",
                     "high",
+                ),
+                # ---- Check for Missing Drivers ----
+                # ConfigManagerStatusCode 28 = Windows cannot load the
+                # required driver. Lists devices that need a driver
+                # installed from Device Manager or the manufacturer.
+                "check_missing_drivers": (
+                    ps_encoded_command(
+                        "Get-CimInstance Win32_PnPEntity | "
+                        "Where-Object { $_.ConfigManagerStatusCode -eq 28 } | "
+                        "Select-Object Name, DeviceID, Status | "
+                        "Format-Table -AutoSize"
+                    ),
+                    "Find devices with missing or broken drivers "
+                    "(status code 28).",
+                    "low",
+                ),
+                # ---- Disable Power Throttling ----
+                # Sets minimum processor throttling to 100% so the CPU
+                # never drops below its maximum frequency.
+                "disable_power_throttling": (
+                    "powercfg /setacvalueindex scheme_current "
+                    "sub_processor PROCTHROTTLEMIN 100 && "
+                    "powercfg /setdcvalueindex scheme_current "
+                    "sub_processor PROCTHROTTLEMIN 100",
+                    "Disable CPU power throttling (set min to 100%)",
+                    "medium",
+                ),
+                # ---- Disable Hibernation ----
+                "disable_hibernation": (
+                    "powercfg /h off",
+                    "Disable hibernation and remove the hibernation "
+                    "file (hiberfil.sys) to reclaim disk space.",
+                    "medium",
+                ),
+                # ---- Disable Cortana ----
+                "disable_cortana": (
+                    "REG ADD \"HKLM\\SOFTWARE\\Policies\\Microsoft\\"
+                    "Windows\\Windows Search\" /v AllowCortana /t "
+                    "REG_DWORD /d 0 /f",
+                    "Disable Cortana and web search in the Start menu.",
+                    "medium",
+                ),
+                # ---- Disable Unwanted Ads ----
+                "disable_unwanted_ads": (
+                    "REG ADD \"HKLM\\SOFTWARE\\Policies\\Microsoft\\"
+                    "Windows\\Explorer\" /v DisableNotificationCenter "
+                    "/t REG_DWORD /d 1 /f && "
+                    "REG ADD \"HKLM\\SOFTWARE\\Policies\\Microsoft\\"
+                    "Windows\\Explorer\" /v DisableAdvisoryTips "
+                    "/t REG_DWORD /d 1 /f && "
+                    "REG ADD \"HKLM\\SOFTWARE\\Policies\\Microsoft\\"
+                    "Windows\\Explorer\" /v NoSuggestionsOnWelcome "
+                    "/t REG_DWORD /d 1 /f",
+                    "Disable notification center, tips and suggested "
+                    "content across Windows.",
+                    "medium",
+                ),
+                # ---- Toggle Dark Mode ----
+                # Reads the current AppsUseLightTheme value and flips
+                # it, applying to both apps and system chrome.
+                "toggle_dark_mode": (
+                    ps_encoded_command(
+                        "$p='HKCU:\\SOFTWARE\\Microsoft\\Windows\\"
+                        "CurrentVersion\\Themes\\Personalize';"
+                        "$v=(Get-ItemProperty $p -Name AppsUseLightTheme "
+                        "-ErrorAction SilentlyContinue).AppsUseLightTheme;"
+                        "if($v -eq 1){Set-ItemProperty $p "
+                        "AppsUseLightTheme 0;Set-ItemProperty $p "
+                        "SystemUsesLightTheme 0;'Dark mode ON'}"
+                        "else{Set-ItemProperty $p AppsUseLightTheme 1;"
+                        "Set-ItemProperty $p SystemUsesLightTheme 1;"
+                        "'Dark mode OFF'}"
+                    ),
+                    "Toggle between dark and light theme. "
+                    "Applies to apps and system chrome.",
+                    "low",
                 ),
             }
 

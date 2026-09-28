@@ -68,6 +68,8 @@ DIAGNOSTICS = [
      "Top 20 CPU-consuming processes."),
     ("gpu_info",     "🎮", "GPU Details",
      "GPU adapter name, driver version, VRAM and status."),
+    ("check_missing_drivers", "🔍", "Check for Missing Drivers",
+     "Find devices with missing or broken drivers (status code 28)."),
 ]
 
 REPAIR = [
@@ -91,6 +93,22 @@ RUNTIMES = [
      "Binds WinUSB / libusb-win32 / libusbK to a specific device."),
     ("libusbk", "🔗", "libusbK",
      "USB driver framework Zadig binds devices to."),
+]
+
+# -- power and hibernation: (command_key, glyph, name, desc) ---------
+POWER = [
+    ("disable_power_throttling", "⚡", "Disable Power Throttling",
+     "Set minimum processor throttling to 100% so the CPU never drops below its max frequency."),
+    ("disable_hibernation", "💤", "Disable Hibernation",
+     "Remove hiberfil.sys and free the disk space it consumes."),
+]
+
+# -- privacy and ads: (command_key, glyph, name, desc, admin) --------
+PRIVACY = [
+    ("disable_cortana", "🤖", "Disable Cortana",
+     "Cortana and web search in the Start menu. Elevated.", True),
+    ("disable_unwanted_ads", "🚫", "Disable Unwanted Ads",
+     "Notification center, tips and suggested content. Elevated.", True),
 ]
 
 # -- control panels opened locally: (key, glyph, name, desc, command) --------
@@ -183,6 +201,16 @@ class TechToolsTab(ToolTabBase):
             card = self.add_command_card(section, cmd_key, glyph, name, desc)
             if card is not None:
                 card.set_action(f"▶  Run  ({risk.upper()})")
+
+        # ---- Power & Throttling --------------------------------------
+        section = self.add_section("⚡  Power & Throttling")
+        for cmd_key, glyph, name, desc in POWER:
+            self.add_command_card(section, cmd_key, glyph, name, desc)
+
+        # ---- Privacy & Ads -------------------------------------------
+        section = self.add_section("🚫  Privacy & Ads")
+        for cmd_key, glyph, name, desc in PRIVACY:
+            self.add_command_card(section, cmd_key, glyph, name, desc)
 
         # ---- Runtimes / drivers --------------------------------------
         section = self.add_section("🧩  Runtimes, Toolchains & Drivers")

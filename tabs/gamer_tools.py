@@ -72,6 +72,22 @@ OPTIMIZATION = [
     ("opt_storage", "🧹", "Storage Sense",
      "Automatic temp and recycle-bin cleanup settings.",
      "start ms-settings:storagesense", "low", True),
+
+    ("toggle_dark_mode", "🌗", "Toggle Dark Mode",
+     "Switch between dark and light theme for apps and system chrome.",
+     ps_encoded_command(
+         "$p='HKCU:\\SOFTWARE\\Microsoft\\Windows\\"
+         "CurrentVersion\\Themes\\Personalize';"
+         "$v=(Get-ItemProperty $p -Name AppsUseLightTheme "
+         "-ErrorAction SilentlyContinue).AppsUseLightTheme;"
+         "if($v -eq 1){Set-ItemProperty $p AppsUseLightTheme "
+         "0;Set-ItemProperty $p SystemUsesLightTheme 0;"
+         "'Dark mode ON'}"
+         "else{Set-ItemProperty $p AppsUseLightTheme 1;"
+         "Set-ItemProperty $p SystemUsesLightTheme 1;"
+         "'Dark mode OFF'}"
+     ),
+     "low", True),
 ]
 
 # -- winget platform installers: (key, glyph, name, desc, winget_id) --------
