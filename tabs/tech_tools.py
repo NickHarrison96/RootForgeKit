@@ -31,6 +31,10 @@ APPS = [
          "Python.Python.3.14"),
         ("app_msys2",     "MSYS2",           "Unix-like shell, GCC toolchain, pacman.",
          "MSYS2.MSYS2"),
+        ("app_wireshark", "Wireshark",       "Network protocol analyzer.",
+         "WiresharkFoundation.Wireshark"),
+        ("app_codium",    "VS Codium",       "Community-built, telemetry-free VS Code.",
+         "VSCodium.VSCodium"),
     ]),
     ("sys", "🛠️", "System Tools", False, [
         ("app_terminal",  "Windows Terminal", "Modern host for PowerShell, CMD and WSL.",
@@ -39,10 +43,16 @@ APPS = [
          "7zip.7zip"),
         ("app_reshack",   "Resource Hacker",  "View and edit the resources inside any Win32 executable.",
          "AngusJohnson.ResourceHacker"),
+        ("app_winaero",   "Winaero Tweaker", "Hidden Windows settings tuner.",
+         "winaero.tweaker"),
     ]),
     ("web", "🌐", "Browsers", False, [
         ("app_chrome",    "Google Chrome", "Google's browser, with profile and password sync.",
          "Google.Chrome"),
+        ("app_brave",     "Brave",         "Fast, privacy-first browser with built-in adblocker.",
+         "Brave.Brave"),
+        ("app_firefox",   "Firefox",       "Mozilla's open-source browser.",
+         "Mozilla.Firefox"),
     ]),
     ("com", "📡", "Communication & Media", False, [
         ("app_discord",   "Discord",   "Voice, video and text chat.",
@@ -51,6 +61,8 @@ APPS = [
          "Apple.iTunes"),
         ("app_teamviewer","TeamViewer","Remote support and unattended access.",
          "TeamViewer.TeamViewer"),
+        ("app_utorrent",  "uTorrent",  "Lightweight BitTorrent client.",
+         "BitTorrent.uTorrent"),
     ]),
     ("game", "🎮", "Gaming", False, [
         ("app_steam",     "Steam", "Valve's game store and library.",
@@ -160,6 +172,14 @@ GAMING_LINKS = [
      "https://cheatengine.org/"),
 ]
 
+# -- winget-free utilities shown as a link in Development
+UTIL_LINKS = [
+    ("link_3utools", "🔧", "3uTools",
+     "iOS device manager and toolkit. Not in winget — opens the official "
+     "download page.",
+     "https://www.3u.com/"),
+]
+
 
 class TechToolsTab(ToolTabBase):
     """Technician utilities: app management, diagnostics, repair, reference."""
@@ -189,6 +209,10 @@ class TechToolsTab(ToolTabBase):
         # hand the user the official download instead.
         for key, glyph, name, desc, url in GAMING_LINKS:
             self.add_url_card(sections["game"], key, glyph, name, desc, url)
+
+        # 3uTools has no winget package.
+        for key, glyph, name, desc, url in UTIL_LINKS:
+            self.add_url_card(sections["dev"], key, glyph, name, desc, url)
 
         # ---- Diagnostics ---------------------------------------------
         section = self.add_section("🩺  Diagnostics", expanded=True)

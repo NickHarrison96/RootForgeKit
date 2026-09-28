@@ -208,6 +208,30 @@ class SecretSauceTab(ToolTabBase):
             "Top CPU consumers. The sauce is expensive.",
         )
 
+        # ---- Hide & Disable -------------------------------------------
+        section = self.add_section("🚫  Hide & Disable", expanded=True)
+        self.add_command_card(
+            section, "disable_cortana", "🤖", "Disable Cortana",
+            "Cortana and web search in the Start menu. Requires elevation.",
+        )
+        self.add_raw_card(
+            section, "remove_dopilot", "🤖", "Remove DPilot",
+            "Windows 11 DPilot overlay assistant. Elevated.",
+            "REG ADD \"HKLM\\SOFTWARE\\Policies\\Microsoft\\"
+            "Windows\\WindowsCopilot\" /v TurnOffWindowsCopilot /t "
+            "REG_DWORD /d 1 /f",
+            risk="medium",
+        )
+        self.add_raw_card(
+            section, "god_mode", "👑", "Enable God Mode",
+            "Creates a GodMode folder on the desktop with all system "
+            "settings.",
+            "mkdir \"%USERPROFILE%\\Desktop\\GodMode."
+            "{ED7BA470-8E54-465E-825C-9931E9D1D5C7}\"",
+            risk="low",
+            skip_confirm=True,
+        )
+
 
 class SecretGatekeeper:
     """

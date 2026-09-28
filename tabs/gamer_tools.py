@@ -92,16 +92,39 @@ OPTIMIZATION = [
 
 # -- winget platform installers: (key, glyph, name, desc, winget_id) --------
 PLATFORM_APPS = [
-    ("app_steam",     "Steam",        "Valve's game store and library.",
+    ("app_steam",        "Steam",        "Valve's game store and library.",
      "Valve.Steam"),
-    ("app_discord",   "Discord",      "Voice, video and text chat.",
+    ("app_discord",      "Discord",      "Voice, video and text chat.",
      "Discord.Discord"),
-    ("app_directx",   "DirectX",      "DirectX End-User Runtime (June 2010 redist).",
+    ("app_directx",      "DirectX",      "DirectX End-User Runtime (June 2010 redist).",
      "Microsoft.DirectX"),
-    ("app_vcredist",  "VC++ Runtimes","Visual C++ 2015-2022 redistributable — needed by most games.",
+    ("app_vcredist",     "VC++ Runtimes","Visual C++ 2015-2022 redistributable — needed by most games.",
      "Microsoft.VCRedist.2015+.x64"),
-    ("app_afterburner", "MSI Afterburner", "GPU overclocking, fan curve and on-screen overlay.",
+    ("app_afterburner",  "MSI Afterburner", "GPU overclocking, fan curve and on-screen overlay.",
      "Guru3D.MSIAfterburner"),
+    ("app_epic",         "Epic Games",   "Epic Games Launcher and Store.",
+     "EpicGames.EpicGamesLauncher"),
+    ("app_ea",           "EA app",       "Electronic Arts desktop client.",
+     "ElectronicArts.EADesktop"),
+    ("app_blizzard",     "Blizzard App", "Blizzard game launcher.",
+     "Blizzard.BlizzardApp"),
+    ("app_icue",         "iCUE 4",       "CORSAIR RGB and peripheral control.",
+     "Corsair.iCUE.4"),
+    ("app_streamlabs",   "Streamlabs",   "Live streaming with OBS-based features.",
+     "Streamlabs.Streamlabs"),
+]
+
+# -- tools with no winget package: shown as a link ------------------
+# (key, glyph, name, description, url)
+GAMING_LINKS = [
+    ("link_cheatengine", "🎯", "Cheat Engine",
+     "Memory scanner and editor for running games. Not in winget — opens the "
+     "official download page.",
+     "https://cheatengine.org/"),
+    ("link_armoury",     "🔧", "Armoury Crate",
+     "ASUS ROG/TUF RGB lighting and hardware control. Not in winget — "
+     "opens the official ASUS download page.",
+     "https://www.asus.com/supportonly/armoury%20crate/helpdesk_download"),
 ]
 
 
@@ -147,6 +170,10 @@ class GamerToolsTab(ToolTabBase):
         section = self.add_section("🕹️  Platform Installers")
         for key, name, desc, winget_id in PLATFORM_APPS:
             self.add_app_card(section, key, "🎮", name, desc, winget_id)
+
+        # ---- Tools with no winget package ---------------------------
+        for key, glyph, name, desc, url in GAMING_LINKS:
+            self.add_url_card(section, key, glyph, name, desc, url)
 
         # ---- Preset profile ------------------------------------------
         section = self.add_section("🚀  Preset Profiles")
