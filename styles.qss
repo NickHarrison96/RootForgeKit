@@ -561,6 +561,47 @@ QMessageBox QPushButton {
     padding: 4px 12px;
 }
 
+/* ============================================================
+   SECRET SAUCE — passphrase gate
+   ============================================================ */
+
+QDialog#SecretGateDialog {
+    background-color: #161b22;
+}
+
+QDialog#SecretGateDialog QLabel {
+    color: #e6edf3;
+}
+
+QLineEdit#SecretGateInput {
+    background-color: #0d1117;
+    color: #e6edf3;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    padding: 7px 10px;
+    font-size: 13px;
+    selection-background-color: #00e5ff;
+    selection-color: #0d1117;
+}
+
+QLineEdit#SecretGateInput:focus {
+    border: 1px solid #00e5ff;
+}
+
+QDialog#SecretGateDialog QDialogButtonBox QPushButton {
+    min-width: 78px;
+    padding: 5px 14px;
+    background-color: #1c2333;
+    color: #e6edf3;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+}
+
+QDialog#SecretGateDialog QDialogButtonBox QPushButton:hover {
+    border: 1px solid #00e5ff;
+    color: #00e5ff;
+}
+
 QGroupBox {
     background-color: #1c2333;
     border: 1px solid #30363d;

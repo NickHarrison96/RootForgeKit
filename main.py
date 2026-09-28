@@ -23,6 +23,7 @@ from tabs.overview import OverviewTab
 from tabs.tech_tools import TechToolsTab
 from tabs.gamer_tools import GamerToolsTab
 from tabs.hardware.tab import HardwareHealthTab
+from tabs.secret_sauce import SecretGatekeeper, SecretSauceTab
 from utils.hwid import get_smbios_info, get_display_summary
 from utils.paths import resource_path
 from utils.resource_manager import configure_global_thread_pool, install_global_crash_handler
@@ -158,6 +159,11 @@ class RootForgeKitMainWindow(QMainWindow):
         self.tabs.addTab(HardwareHealthTab(), "🩺  Hardware Health")
         self.tabs.addTab(TechToolsTab(),      "🔧  Tech Tools")
         self.tabs.addTab(GamerToolsTab(),     "🎮  Gamer Tools")
+
+        # Gated tab, added last so it sits at the far right of the tab bar —
+        # the one nobody stumbles into by accident.
+        secret_index = self.tabs.addTab(SecretSauceTab(), "🍔  SecretSauce")
+        self.secret_gate = SecretGatekeeper(self.tabs, secret_index)
 
         self.setCentralWidget(self.tabs)
 

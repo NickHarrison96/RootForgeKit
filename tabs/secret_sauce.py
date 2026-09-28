@@ -1,0 +1,224 @@
+# =============================================================================
+# RootForgeKit — SecretSauce Tab
+#
+# Same shape as TechToolsTab / GamerToolsTab (see tabs/tool_tab_base.py): a
+# scrollable stack of CollapsibleSections holding ToolCards above a live
+# terminal console. Only difference is the gate — the tab refuses to render
+# until the passphrase is entered.
+# =============================================================================
+
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QDialog, QDialogButtonBox, QLabel, QLineEdit, QVBoxLayout,
+)
+
+from tabs.tool_tab_base import ToolTabBase
+from utils.command_builder import ps_encoded_command
+
+# The passphrase prompt. Kept as module constants so the question and the
+# answer live next to each other and are trivial to change in one place.
+GATE_PROMPT = "What's the Krabby Patty Secret Formula"
+GATE_PASSPHRASE = "kush"
+
+
+class SecretGate(QDialog):
+    """
+    The passphrase prompt shown when the tab is selected.
+
+    Styled by styles.qss (#SecretGateDialog) rather than a bare QInputDialog so
+    it matches the rest of the app instead of dropping a native grey box into a
+    dark UI.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("SecretGateDialog")
+        self.setWindowTitle("🔒  Restricted")
+        self.setModal(True)
+        self.setMinimumWidth(380)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 16, 18, 14)
+        root.setSpacing(10)
+
+        title = QLabel("🍔  SecretSauce")
+        title.setObjectName("TabSectionTitle")
+        title.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
+        root.addWidget(title)
+
+        # The prompt text is the joke, so give it room to breathe rather than
+        # truncating it in a one-line label.
+        prompt = QLabel(GATE_PROMPT)
+        prompt.setObjectName("TabSubtitle")
+        prompt.setWordWrap(True)
+        root.addWidget(prompt)
+
+        self.input = QLineEdit()
+        self.input.setObjectName("SecretGateInput")
+        self.input.setPlaceholderText("passphrase")
+        self.input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.input.returnPressed.connect(self._submit)
+        root.addWidget(self.input)
+
+        self.hint = QLabel("")
+        self.hint.setObjectName("TabSubtitle")
+        self.hint.setWordWrap(True)
+        self.hint.setVisible(False)
+        root.addWidget(self.hint)
+
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.buttons.accepted.connect(self._submit)
+        self.buttons.rejected.connect(self.reject)
+        root.addWidget(self.buttons)
+
+        # A wrong guess re-prompts in place (see _submit), so there is no
+        # attempt counter to thread through here.
+        self.input.setFocus()
+
+    def _submit(self) -> None:
+        if self.input.text().strip().lower() == GATE_PASSPHRASE:
+            self.accept()
+        else:
+            self.input.clear()
+            self.hint.setText("That's not the formula. Try again.")
+            self.hint.setVisible(True)
+            self.input.setFocus()
+
+
+class SecretSauceTab(ToolTabBase):
+    """Licensing diagnostics behind the passphrase gate."""
+
+    def __init__(self, parent=None):
+        super().__init__(
+            title="🍔  SecretSauce",
+            subtitle="You found the back door. Everything in here is read-only — "
+                     "it inspects the machine's own licensing state and changes "
+                     "nothing.",
+            console_label="📟  Sauce Console",
+            parent=parent,
+        )
+        self._build()
+        self.finish_sections()
+
+    def _build(self) -> None:
+        # ---- Licensing state -----------------------------------------
+        section = self.add_section("🔑  Licensing State", expanded=True)
+
+        self.add_raw_card(
+            section, "licence_status",
+            "🔍", "License Status (read-only)",
+            "Query the local licensing store for what Windows actually thinks "
+            "it is licensed as, and whether that license is activated.",
+            ps_encoded_command(
+                "Get-CimInstance SoftwareLicensingProduct | "
+                "Where-Object { $_.PartialProductKey -and $_.Name -notlike '*Genuine*' } | "
+                "Select-Object Name, Description, LicenseStatus, "
+                "GracePeriodRemaining | Format-List"
+            ),
+            risk="low",
+        )
+
+        self.add_raw_card(
+            section, "licence_dlv",
+            "📜", "Detailed License Report",
+            "The full slmgr /dlv dump — channel, partial key, expiry and "
+            "notification state.",
+            "slmgr /dlv",
+            risk="low",
+        )
+
+        self.add_raw_card(
+            section, "licence_oem",
+            "🏷️", "Installed OEM Key",
+            "The firmware-embedded OEM key, if the manufacturer supplied one.",
+            "slmgr /oem",
+            risk="low",
+        )
+
+        # ---- Activation settings --------------------------------------
+        section = self.add_section("⚙️  Activation Settings")
+
+        self.add_raw_card(
+            section, "open_activation",
+            "🔧", "Open Activation Settings",
+            "Windows' own activation page — change key, troubleshoot, or "
+            "buy a genuine license.",
+            "start ms-settings:activation",
+            risk="low",
+            skip_confirm=True,
+        )
+
+        self.add_raw_card(
+            section, "open_activation_troubleshoot",
+            "🩺", "Activation Troubleshooter",
+            "Run Microsoft's built-in activation troubleshooter.",
+            "start ms-settings:activationtroubleshoot",
+            risk="low",
+            skip_confirm=True,
+        )
+
+        # ---- Diagnostics ----------------------------------------------
+        section = self.add_section("🧬  Machine Fingerprint")
+        self.add_command_card(
+            section, "disk_health", "💽", "Drive Health",
+            "Because if you are going to read a licence out loud you may as "
+            "well know the disk is honest.",
+        )
+        self.add_command_card(
+            section, "process_list", "⚡", "Process Priority",
+            "Top CPU consumers. The sauce is expensive.",
+        )
+
+
+class SecretGatekeeper:
+    """
+    Gates a tab behind the passphrase prompt.
+
+    Attach after the tab has been added to the QTabWidget:
+
+        gate = SecretGatekeeper(main_window.tabs, secret_index)
+
+    Selecting the gated tab without the passphrase bounces the user straight
+    back to wherever they were, and a `currentChanged` signal raised by that
+    bounce is ignored so the gate cannot recurse.
+    """
+
+    def __init__(self, tab_widget, index: int):
+        self.tabs = tab_widget
+        self.index = index
+        self.unlocked = False
+        self._fallback = 0
+        self._busy = False
+        self.tabs.currentChanged.connect(self._on_current_changed)
+
+    def _on_current_changed(self, current: int) -> None:
+        if self._busy or self.unlocked or current != self.index:
+            return
+
+        self._busy = True
+        try:
+            dialog = SecretGate(self.tabs)
+            try:
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    self.unlocked = True
+            finally:
+                # The dialog is parented to the tab widget, so without this it
+                # would outlive the attempt and sit in topLevelWidgets() as a
+                # hidden dialog for the rest of the session.
+                dialog.deleteLater()
+            if not self.unlocked:
+                # Wrong answer or cancelled — return to the previous tab.
+                self.tabs.setCurrentIndex(self._fallback)
+        finally:
+            self._busy = False
+
+    def lock(self) -> None:
+        """Re-arm the gate, e.g. when the tab is hidden."""
+        self.unlocked = False
+
+    def remember_fallback(self, index: int) -> None:
+        """Note which tab to bounce back to. Defaults to the first one."""
+        if index != self.index:
+            self._fallback = index
