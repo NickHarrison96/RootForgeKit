@@ -584,6 +584,16 @@ class OverviewTab(QWidget):
     # Data Polling & UI Updates
     # -------------------------------------------------------------------------
 
+    def shutdown(self) -> None:
+        """Stop the refresh timer and any in-flight telemetry read on close."""
+        timer = getattr(self, "_refresh_timer", None)
+        if timer is not None:
+            timer.stop()
+        worker = getattr(self, "_worker", None)
+        if worker is not None and worker.isRunning():
+            worker.stop()
+            worker.wait(1500)
+
     def _start_polling(self):
         """Start background worker and set up auto-refresh every 10 seconds."""
         self._worker = SystemInfoWorker()

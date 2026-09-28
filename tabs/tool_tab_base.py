@@ -7,7 +7,10 @@
 # the one-shot background winget inventory used to show real install states.
 # =============================================================================
 
+import os
 import subprocess
+import threading
+import time
 import webbrowser
 
 from PySide6.QtCore import Qt, QThread, Signal
@@ -56,6 +59,14 @@ def _arp_match(card_name: str, arp_name: str) -> bool:
         rest = arp[len(card):]
         return rest[0].isdigit() or rest[0] in " ("
     return False
+
+
+class _WingetMissing(Exception):
+    """winget.exe is not installed (or not on PATH)."""
+
+
+class _WingetTimeout(Exception):
+    """winget list exceeded its time budget."""
 
 
 class WingetIndexWorker(QThread):
@@ -147,6 +158,88 @@ class WingetIndexWorker(QThread):
 
         return {"by_id": by_id, "arp": arp}
 
+    def _run_winget(self, timeout: int = 90):
+        """Run `winget list` in a way that can actually be cancelled.
+
+        subprocess.run() blocks this thread for the whole call, so
+        requestInterruption() had no effect: closing the app mid-scan left a
+        QThread holding a live child process, and the interpreter then never
+        finished shutting down. That is the process that survives the window
+        and stacks up on every relaunch.
+
+        So: Popen, but the pipes MUST be drained while we wait. Polling
+        proc.poll() and only calling communicate() at the end deadlocks --
+        `winget list` writes more than a pipe buffer holds, blocks on the write,
+        and therefore never exits, so poll() never returns. Measured on this
+        machine: that version timed out at 90s on a command that otherwise
+        finishes in 1.2s. Two reader threads fix it and keep the wait
+        interruptible.
+
+        Returns (stdout, stderr, returncode).
+        """
+        try:
+            proc = subprocess.Popen(
+                ["winget", "list", "--disable-interactivity"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except FileNotFoundError:
+            raise _WingetMissing()
+
+        out_chunks, err_chunks = [], []
+        drain_out = threading.Thread(
+            target=lambda: out_chunks.append(proc.stdout.read()), daemon=True)
+        drain_err = threading.Thread(
+            target=lambda: err_chunks.append(proc.stderr.read()), daemon=True)
+        drain_out.start()
+        drain_err.start()
+
+        deadline = time.monotonic() + timeout
+        timed_out = False
+        while proc.poll() is None:
+            if self.isInterruptionRequested():
+                self._terminate(proc)
+                break
+            if time.monotonic() > deadline:
+                timed_out = True
+                self._terminate(proc)
+                break
+            time.sleep(0.1)
+
+        drain_out.join(timeout=5)
+        drain_err.join(timeout=5)
+
+        if timed_out:
+            raise _WingetTimeout()
+
+        stdout = out_chunks[0] if out_chunks else ""
+        stderr = err_chunks[0] if err_chunks else ""
+        return stdout, stderr, proc.returncode
+
+    @staticmethod
+    def _terminate(proc) -> None:
+        """Kill the child, escalating to the whole process tree if it ignores us.
+
+        taskkill /T is needed because winget can spawn helpers of its own; killing
+        only the parent would leave those running and still holding the pipes.
+        """
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                    capture_output=True, timeout=10,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+            else:
+                proc.kill()
+            proc.wait(timeout=5)
+        except Exception:
+            pass
+
     def run(self):
         # Read the host's own Add/Remove Programs list first — it is cheap
         # and, unlike winget, complete. winget's view is a second opinion
@@ -157,12 +250,8 @@ class WingetIndexWorker(QThread):
             registry = []
 
         try:
-            result = subprocess.run(
-                ["winget", "list", "--disable-interactivity"],
-                capture_output=True, text=True, timeout=90,
-                encoding="utf-8", errors="replace",
-            )
-        except FileNotFoundError:
+            stdout, stderr, returncode = self._run_winget()
+        except _WingetMissing:
             self.index_ready.emit({
                 "error": "winget.exe not found — install 'App Installer' "
                          "from the Microsoft Store, then press Refresh.",
@@ -170,7 +259,7 @@ class WingetIndexWorker(QThread):
                 "arp": registry,
             })
             return
-        except subprocess.TimeoutExpired:
+        except _WingetTimeout:
             self.index_ready.emit({
                 "error": "winget list did not finish within 90 seconds.",
                 "by_id": {},
@@ -185,15 +274,18 @@ class WingetIndexWorker(QThread):
             })
             return
 
-        payload = self._parse(result.stdout or "")
+        if self.isInterruptionRequested():
+            return
+
+        payload = self._parse(stdout)
         if not payload["by_id"] and not payload["arp"]:
-            stderr = (result.stderr or "").strip().splitlines()
-            detail = stderr[-1] if stderr else f"exit code {result.returncode}"
+            err_lines = (stderr or "").strip().splitlines()
+            detail = err_lines[-1] if err_lines else f"exit code {returncode}"
             payload = {"error": f"winget list returned nothing — {detail}",
                        "by_id": {}, "arp": registry}
         else:
-            payload["returncode"] = result.returncode
-            payload["stderr"] = (result.stderr or "").strip()
+            payload["returncode"] = returncode
+            payload["stderr"] = (stderr or "").strip()
 
         # Union the two. The registry is authoritative for presence (it has
         # entries winget never surfaces, TeamViewer being the example that
@@ -497,6 +589,23 @@ class ToolTabBase(QWidget):
         if not self._status_started and self._winget_ids:
             self._status_started = True
             self.refresh_app_statuses()
+
+    def shutdown(self) -> None:
+        """Stop background work on app close. See RootForgeKitMainWindow.closeEvent.
+
+        Both workers spawn child processes (winget, the batch installer). Left
+        running, they keep the interpreter alive after the window is gone, so
+        the process survives and stacks up on every relaunch. ask them to stop
+        and give them a moment to notice; the window-level watchdog covers
+        anything that does not.
+        """
+        for attr in ("_index_worker", "_batch_worker"):
+            worker = getattr(self, attr, None)
+            if worker is not None and worker.isRunning():
+                worker.requestInterruption()
+                worker.wait(1500)
+        if getattr(self, "terminal", None) is not None:
+            self.terminal.shutdown()
 
     def refresh_app_statuses(self, note: str = "") -> None:
         caption = (f"{note} — re-checking this PC…"

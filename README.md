@@ -67,16 +67,32 @@ If that prints `3.10` or higher, you're good. If it prints something older, or
 
 ## Install and run
 
+### The short version (Windows)
+
+1. Get the code (clone it, or download the ZIP and extract it).
+2. **Double-click `run.bat`.**
+
+That's it. `run.bat` finds your Python, creates an isolated environment inside
+the project folder, downloads the two packages the app needs, and starts it.
+First run takes a minute or two, mostly downloading Qt. Every run after that
+starts immediately.
+
+You do not need to know any of the commands below, and you do not need to
+activate anything by hand. `run.bat` is safe to double-click as often as you
+like — once the setup has worked, it skips straight to launching.
+
+### If you'd rather do it by hand
+
 You'll need [Git](https://git-scm.com/downloads) and Python 3.10+.
 
-### 1. Get the code
+#### 1. Get the code
 
 ```bash
 git clone https://github.com/NickHarrison96/RootForgeKit.git
 cd RootForgeKit
 ```
 
-### 2. Create a virtual environment
+#### 2. Create a virtual environment
 
 A virtual environment keeps RootForgeKit's packages separate from everything
 else on your machine, so you can delete it later without side effects. **Do
@@ -102,7 +118,7 @@ Your prompt should change to show `(.venv)` at the front. That means it worked.
 > window.** It's not permanent, by design — it stops packages leaking into your
 > system Python.
 
-### 3. Install the dependencies
+#### 3. Install the dependencies
 
 ```bash
 python -m pip install --upgrade pip
@@ -115,7 +131,7 @@ This installs 5 packages and takes a minute or two, mostly downloading Qt.
 > [Troubleshooting](#troubleshooting) — it means something is compiling, and it
 > shouldn't need to. You probably have an old `.venv` folder lying around.
 
-### 4. Run it
+#### 4. Run it
 
 ```bash
 python main.py
@@ -123,7 +139,7 @@ python main.py
 
 A dark window titled `RootForgeKit v0.5 (Pre-Alpha)` should open. That's it.
 
-### 5. (Optional) Close the window without losing your packages
+#### 5. (Optional) Close the window without losing your packages
 
 You can leave the environment activated, or deactivate it with:
 
@@ -133,11 +149,20 @@ deactivate
 
 Next session: `cd` into the project folder, re-activate, and run `python main.py`.
 
+### macOS and Linux
+
+`run.bat` is Windows-only. On macOS and Linux use the manual steps above, then:
+
+```bash
+source .venv/bin/activate
+python main.py
+```
+
 ---
 
 ## Using the app
 
-There are four tabs along the top.
+These are the main tabs along the top.
 
 ### 📊 Overview
 
@@ -239,6 +264,9 @@ Run the second command even if nothing changed. It's fast when everything is
 already up to date, and it picks up new dependencies when the project adds
 some.
 
+If you use `run.bat`, just `git pull` and double-click it again — it notices
+when `requirements.txt` has changed and reinstalls for you.
+
 ---
 
 ## Starting over / uninstalling
@@ -316,17 +344,23 @@ PATH"** on the first screen of the installer.
 If you installed it and it still isn't found, close and reopen your terminal —
 the PATH change doesn't reach terminals that were already open.
 
-### `ModuleNotFoundError: No module named 'PySide6'`
+### `ModuleNotFoundError: No module named 'PySide6'` or `'psutil'`
 
-You're running the wrong Python — almost always you forgot to activate the
-virtual environment. Your prompt should start with `(.venv)`. If it doesn't:
+The dependencies were never installed. This is the single most common thing to
+hit, because the app looks like it should just run.
+
+The easy fix on Windows: **close your terminal and double-click `run.bat`** in
+the project folder. It creates the environment and installs everything for you.
+
+By hand, you're running the wrong Python — almost always you forgot to activate
+the virtual environment. Your prompt should start with `(.venv)`. If it doesn't:
 
 ```bash
 .venv\Scripts\activate       # Windows
 source .venv/bin/activate    # macOS / Linux
 ```
 
-Then run `python main.py` again. Check with `python -c "import PySide6; print('ok')"`
+Then run `python main.py` again. Check with `python -c "import PySide6, psutil; print('ok')"`
 — it should print `ok`.
 
 ### The app opens behind another window, or at the wrong size
@@ -389,6 +423,8 @@ The build is Windows-only as written. It's unsigned, so expect AV warnings.
 
 ```
 main.py                 Entry point — builds the window, tabs, status bar
+run.bat                 Windows one-click launcher: sets up .venv and starts
+                        the app. Double-click this if you're not sure.
 styles.qss              The entire dark theme
 RootForgeKit.spec       PyInstaller build definition
 
@@ -416,6 +452,9 @@ utils/                  Platform logic, no UI
   hardware_vendor.py      CPU/GPU vendor detection for driver links
   os_logo.py              Vector OS logos
   host_inventory.py       Installed-application inventory
+  cim_query.py            One place that runs CIM queries (with a WMI fallback)
+  windows_hw.py           Windows hardware quirks: GPU VRAM, OEM placeholders,
+                          laptop model names, build numbers, screen resolution
   resource_manager.py     Thread pool sizing, global crash handler
 
 resources/              Icons and OS logos

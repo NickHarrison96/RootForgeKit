@@ -326,6 +326,17 @@ class TerminalConsoleWidget(QWidget):
             clipboard.setText(self.console.toPlainText())
             self._append_output("[Copied all logs to clipboard.]\n", "#64ffda")
 
+    def shutdown(self):
+        """Kill a running command without asking. Called on app close.
+
+        A QProcess that is still streaming keeps the interpreter alive at
+        teardown, which leaves a windowless process behind on every relaunch.
+        No confirmation prompt here: there is no user left to answer it.
+        """
+        if self._process and self._process.state() != QProcess.ProcessState.NotRunning:
+            self._process.kill()
+            self._process.waitForFinished(500)
+
     def _abort_process(self):
         """Kill the running process."""
         if self._process and self._process.state() != QProcess.ProcessState.NotRunning:

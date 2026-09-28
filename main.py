@@ -11,6 +11,82 @@
 
 import sys
 import os
+import threading
+
+# =============================================================================
+# Dependency preflight — MUST run before anything imports PySide6 or psutil.
+#
+# Without this, a machine that has never installed our dependencies dies with a
+# bare "ModuleNotFoundError: No module named 'psutil'" pointing at an import
+# line in utils/sys_info.py, which tells a first-time user nothing about what to
+# do next. The testers receive this as a GitHub zip, so "just pip install it
+# first" is exactly the step that gets skipped.
+#
+# Deliberately stdlib-only: find_spec() checks for a package without executing
+# it, so this stays cheap and cannot itself fail on a missing dependency.
+# =============================================================================
+
+_REQUIRED_PACKAGES = (
+    ("PySide6", "the GUI toolkit the whole app is built on"),
+    ("psutil", "CPU, memory, disk and battery telemetry"),
+)
+
+
+def _preflight_dependencies() -> None:
+    """Exit with an actionable message if a required package is absent."""
+    from importlib.util import find_spec
+
+    missing = []
+    for module, why in _REQUIRED_PACKAGES:
+        try:
+            found = find_spec(module) is not None
+        except (ImportError, ValueError):
+            found = False
+        if not found:
+            missing.append((module, why))
+
+    if not missing:
+        return
+
+    lines = [
+        "",
+        "=" * 68,
+        "  RootForgeKit cannot start: dependencies are not installed.",
+        "=" * 68,
+        "",
+    ]
+    for module, why in missing:
+        lines.append(f"  MISSING  {module}  ({why})")
+    lines += [
+        "",
+        "  Run this from the folder containing main.py, then start the app again:",
+        "",
+        "      python -m pip install -r requirements.txt",
+        "",
+        "  On Windows, 'run.bat' does all of the above for you, including",
+        "  creating an isolated virtual environment:",
+        "",
+        "      run.bat",
+        "",
+    ]
+    if os.name == "nt":
+        lines += [
+            "  If pip is not recognised, Python was installed without pip being",
+            "  on PATH. Re-run the Python installer, choose Modify, and tick",
+            "  'pip' under Optional Features.",
+            "",
+        ]
+    lines.append("=" * 68)
+    lines.append("")
+
+    # stderr, because stdout may be swallowed by a launcher that opens a
+    # console for the process.
+    sys.stderr.write("\n".join(lines))
+    sys.stderr.flush()
+    raise SystemExit(1)
+
+
+_preflight_dependencies()
 
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget,
@@ -27,6 +103,10 @@ from tabs.secret_sauce import SecretGatekeeper, SecretSauceTab
 from utils.hwid import get_smbios_info, get_display_summary
 from utils.paths import resource_path
 from utils.resource_manager import configure_global_thread_pool, install_global_crash_handler
+
+# How long a shutdown may take before the process is forced down. A clean exit
+# takes a fraction of this; anything still running at the limit is wedged.
+_EXIT_WATCHDOG_SECONDS = 3.0
 
 APP_VERSION = "0.5"
 APP_STAGE = "Pre-Alpha"
@@ -110,6 +190,37 @@ class RootForgeKitMainWindow(QMainWindow):
 
         # Intercept crashes globally and direct them to active tab console
         install_global_crash_handler(log_callback=self.route_crash_to_console)
+
+    def closeEvent(self, event):
+        """Shut background work down before the window goes away.
+
+        Without this, closing the window left a process running with no window
+        on it, and every relaunch added another one. The cause is worker threads
+        that outlive the event loop: a QThread still blocked in a child process
+        keeps the interpreter alive during teardown, so the process never exits.
+
+        Each tab gets asked to stop and is given a moment to comply. That is
+        best-effort by design — the watchdog in main() is what actually
+        guarantees the process ends, because a thread wedged in a driver call
+        cannot be asked politely.
+        """
+        hwid_worker = getattr(self, "_hwid_worker", None)
+        if hwid_worker is not None and hwid_worker.isRunning():
+            hwid_worker.wait(1000)
+
+        tabs = self.centralWidget()
+        if isinstance(tabs, QTabWidget):
+            for index in range(tabs.count()):
+                tab = tabs.widget(index)
+                shutdown = getattr(tab, "shutdown", None)
+                if callable(shutdown):
+                    try:
+                        shutdown()
+                    except Exception:
+                        # Never let a failing teardown keep the window open.
+                        pass
+
+        event.accept()
 
     def route_crash_to_console(self, crash_report: str):
         """Routes unhandled exceptions directly into the active tab console."""
@@ -227,7 +338,25 @@ def main():
     window = RootForgeKitMainWindow()
     window.show()
 
-    sys.exit(app.exec())
+    code = app.exec()
+
+    # ---- Exit watchdog ----------------------------------------------------
+    # By the time app.exec() returns the Qt event loop is already gone, so a
+    # QTimer here would never fire. A plain daemon thread is the only thing
+    # that still runs during interpreter teardown.
+    #
+    # It exists because a healthy teardown finishes in well under a second,
+    # while a worker wedged in a child process or a driver call can block
+    # teardown indefinitely. Rather than leave a windowless process behind --
+    # which is what made the app "stay open" and stack up on every relaunch --
+    # force the process down. os._exit() skips atexit hooks and buffered writes
+    # on purpose: at this point the only thing left to lose is a teardown that
+    # is not going to finish anyway.
+    watchdog = threading.Timer(_EXIT_WATCHDOG_SECONDS, lambda: os._exit(code))
+    watchdog.daemon = True
+    watchdog.start()
+
+    sys.exit(code)
 
 
 if __name__ == "__main__":

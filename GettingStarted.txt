@@ -4,6 +4,20 @@ QUICK START
 ===========
 Full instructions, including troubleshooting, are in README.md.
 
+THE EASY WAY (WINDOWS)
+----------------------
+1. Get the code: clone the repo, or download the ZIP and extract it.
+2. Double-click run.bat.
+
+That is the whole setup. run.bat finds your Python, creates the environment,
+installs the packages and starts the app. The first run takes a minute or two
+(mostly downloading Qt). After that, double-click run.bat again and it just
+starts -- you can skip every step in the manual route below.
+
+THE MANUAL ROUTE
+----------------
+Use this if you prefer to see what is happening, or you are on macOS or Linux.
+
 FIRST TIME ONLY
 ---------------
 1. Install Python 3.10 or newer from python.org.
@@ -37,6 +51,9 @@ UPDATING
 git pull
 pip install -r requirements.txt
 
+If you use run.bat, just "git pull" and double-click it again -- it notices
+when requirements.txt has changed and reinstalls for you.
+
 IF INSTALL FAILS
 ----------------
 "Failed to build wheel for lzfse" / "pylzss"
@@ -48,8 +65,11 @@ IF INSTALL FAILS
     Settings > Apps > Advanced app settings > App execution aliases
     Turn OFF both python.exe and python3.exe, then reopen the terminal.
 
-"No module named 'PySide6'"
-    You forgot to activate. Your prompt should start with (.venv).
+"No module named 'PySide6'" or "No module named 'psutil'"
+    The dependencies were never installed. On Windows the fix is to close the
+    terminal and double-click run.bat. By hand, you forgot to activate --
+    your prompt should start with (.venv):
         .venv\Scripts\activate
+    Then run: python main.py
 
 See the Troubleshooting section of README.md for the rest.
