@@ -118,9 +118,9 @@ POWER = [
 # -- privacy and ads: (command_key, glyph, name, desc, admin) --------
 PRIVACY = [
     ("disable_cortana", "🤖", "Disable Cortana",
-     "Cortana and web search in the Start menu. Elevated.", True),
+     "Cortana and web search in the Start menu. Elevated."),
     ("disable_unwanted_ads", "🚫", "Disable Unwanted Ads",
-     "Notification center, tips and suggested content. Elevated.", True),
+     "Notification center, tips and suggested content. Elevated."),
 ]
 
 # -- control panels opened locally: (key, glyph, name, desc, command) --------
