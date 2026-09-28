@@ -17,7 +17,8 @@ from tabs.tool_tab_base import ToolTabBase
 # The `glyph` is the SECTION's icon; every card in it inherits it.
 APPS = [
     ("dev", "💻", "Development", True, [
-        ("app_claude",    "Claude Code",     "Anthropic's terminal coding agent.",
+        ("app_claude",    "Claude Code",     "Anthropic's terminal coding agent. "
+         "winget installs do not auto-update — run `winget upgrade Anthropic.ClaudeCode` manually.",
          "Anthropic.ClaudeCode"),
         ("app_docker",    "Docker Desktop",  "Container runtime with WSL2 backend.",
          "Docker.DockerDesktop"),
