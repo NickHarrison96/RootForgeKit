@@ -228,7 +228,7 @@ class SecretSauceTab(ToolTabBase):
             "settings.",
             ps_encoded_command(
                 "New-Item -Path \"$env:USERPROFILE\\Desktop\\"
-                "GodMode.{ED7BA470-8E54-465E-825C-9931E9D1D5C7}\" "
+                "GodMode.{ED7BA470-8E54-465E-825C-99712043E01C}\" "
                 "-ItemType Directory -Force"
             ),
             risk="low",
