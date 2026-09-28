@@ -19,7 +19,7 @@ PRESET_PROFILES = {
             "Discord.Discord",
             "Valve.Steam",
             "7zip.7zip",
-            "Guru3D.MSIAfterburner"
+            "Guru3D.Afterburner"
         ],
         "darwin_packages": [
             "discord",
