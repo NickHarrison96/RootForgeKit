@@ -108,8 +108,8 @@ PLATFORM_APPS = [
      "ElectronicArts.EADesktop"),
     ("app_blizzard",     "Blizzard App", "Blizzard game launcher.",
      "Blizzard.BlizzardApp"),
-    ("app_icue",         "iCUE 4",       "CORSAIR RGB and peripheral control.",
-     "Corsair.iCUE.4"),
+    ("app_icue",         "iCUE 4",       "CORSAIR RGB and peripheral control. Requires elevation.",
+     "Corsair.iCUE.4", True),
     ("app_streamlabs",   "Streamlabs",   "Live streaming with OBS-based features.",
      "Streamlabs.Streamlabs"),
 ]
@@ -168,8 +168,10 @@ class GamerToolsTab(ToolTabBase):
 
         # ---- Platform installers -------------------------------------
         section = self.add_section("🕹️  Platform Installers")
-        for key, name, desc, winget_id in PLATFORM_APPS:
-            self.add_app_card(section, key, "🎮", name, desc, winget_id)
+        for entry in PLATFORM_APPS:
+            key, name, desc, winget_id = entry[:4]
+            req_admin = entry[4] if len(entry) > 4 else False
+            self.add_app_card(section, key, "🎮", name, desc, winget_id, req_admin)
 
         # ---- Tools with no winget package ---------------------------
         for key, glyph, name, desc, url in GAMING_LINKS:

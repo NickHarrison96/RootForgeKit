@@ -574,12 +574,14 @@ class ToolTabBase(QWidget):
         return self._register(key, card)
 
     def add_app_card(self, section: CollapsibleSection, key: str, icon: str,
-                     name: str, description: str, winget_id: str) -> ToolCard:
+                      name: str, description: str, winget_id: str,
+                      requires_admin: bool = False) -> ToolCard | None:
         card = ToolCard(icon, name, description, action_text="⟳  Check",
                         risk="medium")
         card.set_status("checking", "waiting for the first scan")
         card._winget_id = winget_id
         card._app_name = name
+        card._requires_admin = requires_admin
         section.content_layout().addWidget(card)
         self._winget_ids[key] = winget_id
         if not self.refresh_btn.isVisible():
@@ -847,6 +849,7 @@ class ToolTabBase(QWidget):
         started = self.terminal.execute_command(
             command=command, description=description, risk_level=risk,
             command_key=card._key, skip_confirm=skip,
+            requires_admin=getattr(card, "_requires_admin", False),
         )
         if started:
             card.set_status("running", "winget working…")
