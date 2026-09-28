@@ -840,7 +840,8 @@ class ToolTabBase(QWidget):
         else:
             command = (
                 f"winget install --id {winget_id} -e "
-                "--accept-package-agreements --accept-source-agreements"
+                "--accept-package-agreements --accept-source-agreements "
+                "--force"
             )
             description = f"Install {name} from the winget repository"
             risk, skip = "medium", False

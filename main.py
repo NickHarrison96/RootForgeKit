@@ -351,10 +351,12 @@ def main():
     if _command_key:
         tabs = window.centralWidget()
         if isinstance(tabs, QTabWidget):
-            tech = tabs.widget(2)
-            run_cmd = getattr(tech, "run_command", None)
-            if callable(run_cmd):
-                run_cmd(_command_key)
+            for index in range(tabs.count()):
+                tab = tabs.widget(index)
+                run_cmd = getattr(tab, "run_command", None)
+                if callable(run_cmd):
+                    run_cmd(_command_key)
+                    break
 
     # If this instance was relaunched as Administrator specifically
     # for the SecretSauce tab, unlock the gate so the content is
