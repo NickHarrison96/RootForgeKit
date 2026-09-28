@@ -304,23 +304,27 @@ class CommandBuilder:
                 ),
                 # ---- Disable Cortana ----
                 "disable_cortana": (
-                    "REG ADD \"HKLM\\SOFTWARE\\Policies\\Microsoft\\"
-                    "Windows\\Windows Search\" /v AllowCortana /t "
-                    "REG_DWORD /d 0 /f",
+                    ps_encoded_command(
+                        "REG ADD \"HKLM\\SOFTWARE\\Policies\\"
+                        "Microsoft\\Windows\\Windows Search\" /v "
+                        "AllowCortana /t REG_DWORD /d 0 /f"
+                    ),
                     "Disable Cortana and web search in the Start menu.",
                     "medium",
                 ),
                 # ---- Disable Unwanted Ads ----
                 "disable_unwanted_ads": (
-                    "REG ADD \"HKLM\\SOFTWARE\\Policies\\Microsoft\\"
-                    "Windows\\Explorer\" /v DisableNotificationCenter "
-                    "/t REG_DWORD /d 1 /f && "
-                    "REG ADD \"HKLM\\SOFTWARE\\Policies\\Microsoft\\"
-                    "Windows\\Explorer\" /v DisableAdvisoryTips "
-                    "/t REG_DWORD /d 1 /f && "
-                    "REG ADD \"HKLM\\SOFTWARE\\Policies\\Microsoft\\"
-                    "Windows\\Explorer\" /v NoSuggestionsOnWelcome "
-                    "/t REG_DWORD /d 1 /f",
+                    ps_encoded_command(
+                        "REG ADD \"HKLM\\SOFTWARE\\Policies\\"
+                        "Microsoft\\Windows\\Explorer\" /v "
+                        "DisableNotificationCenter /t REG_DWORD /d 1 /f; "
+                        "REG ADD \"HKLM\\SOFTWARE\\Policies\\"
+                        "Microsoft\\Windows\\Explorer\" /v "
+                        "DisableAdvisoryTips /t REG_DWORD /d 1 /f; "
+                        "REG ADD \"HKLM\\SOFTWARE\\Policies\\"
+                        "Microsoft\\Windows\\Explorer\" /v "
+                        "NoSuggestionsOnWelcome /t REG_DWORD /d 1 /f"
+                    ),
                     "Disable notification center, tips and suggested "
                     "content across Windows.",
                     "medium",
