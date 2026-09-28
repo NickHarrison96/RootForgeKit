@@ -1,0 +1,7 @@
+* text=auto eol=lf
+
+# Batch files need CRLF — CMD is unreliable with LF-only .bat files.
+*.bat text eol=crlf
+
+# Shell scripts need LF.
+*.sh text eol=lf

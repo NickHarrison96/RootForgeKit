@@ -93,9 +93,9 @@ class SecretSauceTab(ToolTabBase):
     def __init__(self, parent=None):
         super().__init__(
             title="🍔  SecretSauce",
-            subtitle="You found the back door. Everything in here is read-only — "
-                     "it inspects the machine's own licensing state and changes "
-                     "nothing.",
+            subtitle="Licensing diagnostics and edition activation. "
+                      "The gate still applies — the passphrase is required "
+                      "before any of this is visible.",
             console_label="📟  Sauce Console",
             parent=parent,
         )
@@ -157,6 +157,43 @@ class SecretSauceTab(ToolTabBase):
             "start ms-settings:activationtroubleshoot",
             risk="low",
             skip_confirm=True,
+        )
+
+        # ---- Edition activation --------------------------------------
+        section = self.add_section("🔑  Edition Activation", expanded=True)
+
+        self.add_raw_card(
+            section, "activate_pro",
+            "🟦", "Activate Pro Edition",
+            "KMS activation for Windows Pro. Requires elevation.",
+            ps_encoded_command(
+                "slmgr /upk && slmgr /ipk W269N-WFGWX-YVC9B-4J6C9-T83GX && "
+                "slmgr /skms kms8.msguides.com && slmgr /ato"
+            ),
+            risk="high",
+        )
+
+        self.add_raw_card(
+            section, "activate_enterprise",
+            "🟪", "Activate Enterprise Edition",
+            "KMS activation for Windows Enterprise. Requires elevation.",
+            ps_encoded_command(
+                "slmgr.vbs /upk && slmgr /ipk NPPR9-FWDCX-D2C8J-H872K-2YT43 && "
+                "slmgr /skms kms8.msguides.com && slmgr /ato"
+            ),
+            risk="high",
+        )
+
+        self.add_raw_card(
+            section, "set_server_standard",
+            "🔄", "Set Edition to Server Standard",
+            "Changes the reported Windows edition via DISM. Requires "
+            "elevation and the correct product key.",
+            ps_encoded_command(
+                "dism /online /Set-Edition:ServerStandard /ProductKey:"
+                "W269N-WFGWX-YVC9B-4J6C9-T83GX /AcceptEula"
+            ),
+            risk="high",
         )
 
         # ---- Diagnostics ----------------------------------------------
