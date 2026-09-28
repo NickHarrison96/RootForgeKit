@@ -135,7 +135,7 @@ class TerminalConsoleWidget(QWidget):
         # or starts a *separate* elevated process that will run the command.
         # Either way this instance must not continue on to execute it.
         if requires_admin and not is_admin():
-            self._offer_elevation(description)
+            self._offer_elevation(description, command_key=command_key)
             return False
 
         # ---- Layer 1: Information dialog ----
@@ -207,13 +207,14 @@ class TerminalConsoleWidget(QWidget):
     # Elevation
     # -------------------------------------------------------------------------
 
-    def _offer_elevation(self, description: str) -> bool:
+    def _offer_elevation(self, description: str, command_key: str = "") -> bool:
         """
         Explain that this tool needs Administrator and offer to relaunch.
 
         Always returns False — even on success, because the elevated instance
         is a brand new process; this one is shutting down and must not also
-        run the command.
+        run the command. The command key is forwarded so the new instance
+        can run it automatically instead of starting at the Overview tab.
         """
         reply = QMessageBox.question(
             self, "Administrator Required",
@@ -234,7 +235,7 @@ class TerminalConsoleWidget(QWidget):
             )
             return False
 
-        started, message = relaunch_as_admin()
+        started, message = relaunch_as_admin(command_key=command_key)
         self._append_output(f"[*] {message}\n", "#00e5ff")
         if started:
             # Hand off to the elevated instance and close this one, so two

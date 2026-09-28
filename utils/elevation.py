@@ -32,15 +32,19 @@ def is_admin() -> bool:
         return False
 
 
-def relaunch_as_admin() -> tuple[bool, str]:
+def relaunch_as_admin(command_key: str = "") -> tuple[bool, str]:
     """
-    Relaunch RootForgeKit elevated via UAC. The caller is expected to quit the
-    current (unelevated) instance once this returns success — the two must
-    not run side by side.
+    Relaunch RootForgeKit elevated via UAC, optionally carrying a command
+    key so the new instance can run it automatically instead of starting
+    at the Overview tab.
 
-    Windows only, on purpose: running a whole Linux/macOS GUI app as root is
-    bad practice, and neither platform needs it here. Those platforms elevate
-    per-operation instead (see tunnel_manager's osascript/pkexec paths).
+    The caller is expected to quit the current (unelevated) instance once
+    this returns success — the two must not run side by side.
+
+    Windows only, on purpose: running a whole Linux/macOS GUI app as root
+    is bad practice, and neither platform needs it here. Those platforms
+    elevate per-operation instead (see tunnel_manager's osascript/pkexec
+    paths).
 
     Returns (started, message).
     """
@@ -50,9 +54,13 @@ def relaunch_as_admin() -> tuple[bool, str]:
             "sudo/root privileges if a tool reports it needs them."
         )
 
+    args = [sys.argv[0], *sys.argv[1:]]
+    if command_key:
+        args += ["--command", command_key]
+
     script = os.path.abspath(sys.argv[0])
     workdir = os.path.dirname(script) or os.getcwd()
-    params = " ".join(f'"{arg}"' for arg in [script, *sys.argv[1:]])
+    params = " ".join(f'"{arg}"' for arg in args)
 
     try:
         # ShellExecuteW with the "runas" verb is what raises the UAC prompt.

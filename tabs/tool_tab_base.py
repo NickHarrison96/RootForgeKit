@@ -499,6 +499,36 @@ class ToolTabBase(QWidget):
     # Cards
     # ------------------------------------------------------------------
 
+    def run_command(self, key: str) -> None:
+        """Run a command by its registry key without a card click.
+
+        Used by the elevated instance: RootForgeKit is relaunched as
+        Administrator with --command <key>, and this method fires the
+        corresponding card's command so the user does not have to navigate
+        back to the right tab and click again.
+        """
+        card = self._cards.get(key)
+        if card is None:
+            return
+        previous = (card.status_key, card.status_detail)
+        self._log(f"[RUN] {card.name.text()}", INFO)
+        started = self.terminal.execute_command(
+            command=card._command,
+            description=card.desc.text(),
+            risk_level=card._risk,
+            command_key=key,
+            skip_confirm=getattr(card, "_skip_confirm", False),
+            requires_admin=getattr(card, "_admin", False),
+        )
+        if started:
+            card.set_status("running", "started - output below")
+            card.set_action(".  Running", enabled=False)
+            self._begin_progress(f"Running {card.name.text()}.")
+        else:
+            card.set_status(*previous)
+            card.set_action("?  Run", enabled=True)
+            self._end_progress()
+
     def _register(self, key: str, card: ToolCard) -> ToolCard:
         self._cards[key] = card
         card._key = key

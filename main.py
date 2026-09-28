@@ -338,6 +338,24 @@ def main():
     window = RootForgeKitMainWindow()
     window.show()
 
+    # If this instance was relaunched as Administrator with a command
+    # key (--command <key>), fire it now instead of sitting on the
+    # Overview tab.
+    _command_key = None
+    args = sys.argv[1:]
+    if "--command" in args:
+        try:
+            _command_key = args[args.index("--command") + 1]
+        except (IndexError, KeyError):
+            pass
+    if _command_key:
+        tabs = window.centralWidget()
+        if isinstance(tabs, QTabWidget):
+            tech = tabs.widget(2)
+            run_cmd = getattr(tech, "run_command", None)
+            if callable(run_cmd):
+                run_cmd(_command_key)
+
     code = app.exec()
 
     # ---- Exit watchdog ----------------------------------------------------
