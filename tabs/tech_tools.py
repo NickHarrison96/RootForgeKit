@@ -61,8 +61,6 @@ APPS = [
          "Apple.iTunes"),
         ("app_teamviewer","TeamViewer","Remote support and unattended access.",
          "TeamViewer.TeamViewer"),
-        ("app_utorrent",  "uTorrent",  "Lightweight BitTorrent client.",
-         "BitTorrent.uTorrent"),
     ]),
     ("game", "🎮", "Gaming", False, [
         ("app_steam",     "Steam", "Valve's game store and library.",
@@ -133,6 +131,15 @@ PANELS = [
      "System, application and security event logs.", "start eventvwr.msc"),
     ("panel_wupdate",  "🔄", "Windows Update",
      "Check for and install OS updates.", "start ms-settings:windowsupdate"),
+]
+
+# -- tools with no winget package: shown as a link ------------------
+# (key, glyph, name, description, url)
+COMM_LINKS = [
+    ("link_utorrent", "🌐", "uTorrent",
+     "Lightweight BitTorrent client. Not in winget — opens the "
+     "official download page.",
+     "https://www.utorrent.com/"),
 ]
 
 # -- reference links: (key, glyph, name, desc, url) --------------------------
@@ -258,3 +265,7 @@ class TechToolsTab(ToolTabBase):
         section = self.add_section("🔗  Useful Resources")
         for key, glyph, name, desc, url in LINKS:
             self.add_url_card(section, key, glyph, name, desc, url)
+
+        # ---- uTorrent (no winget package) ---------------------------
+        for key, glyph, name, desc, url in COMM_LINKS:
+            self.add_url_card(sections["com"], key, glyph, name, desc, url)
