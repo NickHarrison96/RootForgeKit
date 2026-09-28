@@ -31,22 +31,47 @@ echo.
 
 REM ---- 1. Locate a Python to build the environment with --------------------
 set "BOOTSTRAP_PY="
+
+REM Try the py launcher first — it is on PATH if any Python installer
+REM registered itself, which the Microsoft Store installer does not.
 where py >nul 2>&1
 if not errorlevel 1 set "BOOTSTRAP_PY=py -3"
 if defined BOOTSTRAP_PY goto :have_python
 
+REM Try python on PATH.
 where python >nul 2>&1
 if not errorlevel 1 set "BOOTSTRAP_PY=python"
 if defined BOOTSTRAP_PY goto :have_python
+
+REM Python was installed without "Add python.exe to PATH" (common with
+REM the official installer). Search the usual install locations.
+for /d %%D in (
+    "%LOCALAPPDATA%\Programs\Python\Python3*"
+    "%USERPROFILE%\AppData\Local\Programs\Python\Python3*"
+    "C:\Python3*"
+    "C:\Program Files\Python3*"
+) do (
+    if exist "%%D\python.exe" (
+        set "BOOTSTRAP_PY=%%D\python.exe"
+        goto :have_python
+    )
+)
 
 echo  [X] No Python found.
 echo.
 echo      Python 3.10 or newer is required. Install it from:
 echo        https://www.python.org/downloads/
 echo.
-echo      During setup, TICK "Add python.exe to PATH".
-echo      Without that tick the installer cannot be found and this script
-echo      cannot continue.
+echo      If you already have Python installed but it was installed
+echo      without ticking "Add python.exe to PATH", run.bat will
+echo      still find it in the usual install folders. If it does
+echo      not, run this in the project folder instead:
+echo.
+echo        python -m venv .venv
+echo        .venv\Scripts\activate
+echo        pip install -r requirements.txt
+echo.
+echo      Then double-click run.bat and it will reuse that environment.
 echo.
 pause
 exit /b 1

@@ -9,10 +9,12 @@ THE EASY WAY (WINDOWS)
 1. Get the code: clone the repo, or download the ZIP and extract it.
 2. Double-click run.bat.
 
-That is the whole setup. run.bat finds your Python, creates the environment,
-installs the packages and starts the app. The first run takes a minute or two
-(mostly downloading Qt). After that, double-click run.bat again and it just
-starts -- you can skip every step in the manual route below.
+That is the whole setup. run.bat finds your Python (it searches the
+usual install folders even if Python is not on PATH), creates the
+environment, installs the packages and starts the app. The first run
+takes a minute or two (mostly downloading Qt). After that, double-click
+run.bat again and it just starts -- you can skip every step in the
+manual route below.
 
 THE MANUAL ROUTE
 ----------------
@@ -21,9 +23,12 @@ Use this if you prefer to see what is happening, or you are on macOS or Linux.
 FIRST TIME ONLY
 ---------------
 1. Install Python 3.10 or newer from python.org.
-   IMPORTANT: tick "Add python.exe to PATH" during setup.
-   Do NOT install from the Microsoft Store -- its python.exe stub opens the
-   Store instead of running Python.
+    If you used run.bat above, this step is optional -- it searches
+    the usual install folders automatically and does not need Python
+    on PATH.
+    Otherwise, IMPORTANT: tick "Add python.exe to PATH" during setup.
+    Do NOT install from the Microsoft Store -- its python.exe stub
+    opens the Store instead of running Python.
 
 2. Install Git from https://git-scm.com/downloads
 
