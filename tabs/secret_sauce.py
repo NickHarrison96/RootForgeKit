@@ -12,13 +12,20 @@ from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QLabel, QLineEdit, QVBoxLayout,
 )
 
+from PySide6.QtWidgets import QApplication
+
 from tabs.tool_tab_base import ToolTabBase
 from utils.command_builder import ps_encoded_command
+from utils.elevation import is_admin, relaunch_as_admin
 
 # The passphrase prompt. Kept as module constants so the question and the
 # answer live next to each other and are trivial to change in one place.
 GATE_PROMPT = "What's the Krabby Patty Secret Formula"
 GATE_PASSPHRASE = "kush"
+
+# The tab also needs Administrator for the activation commands. The passphrase
+# is the first gate; elevation is the second. Both must pass before anything
+# in here is visible.
 
 
 class SecretGate(QDialog):
@@ -94,8 +101,7 @@ class SecretSauceTab(ToolTabBase):
         super().__init__(
             title="🍔  SecretSauce",
             subtitle="Licensing diagnostics and edition activation. "
-                      "The gate still applies — the passphrase is required "
-                      "before any of this is visible.",
+                      "Requires the passphrase and Administrator privileges.",
             console_label="📟  Sauce Console",
             parent=parent,
         )
@@ -235,15 +241,37 @@ class SecretGatekeeper:
                 if dialog.exec() == QDialog.DialogCode.Accepted:
                     self.unlocked = True
             finally:
-                # The dialog is parented to the tab widget, so without this it
-                # would outlive the attempt and sit in topLevelWidgets() as a
-                # hidden dialog for the rest of the session.
                 dialog.deleteLater()
             if not self.unlocked:
                 # Wrong answer or cancelled — return to the previous tab.
                 self.tabs.setCurrentIndex(self._fallback)
+                return
+
+            # The passphrase passed. The activation commands inside this
+            # tab need Administrator, so elevate before showing anything.
+            if not is_admin():
+                started, message = relaunch_as_admin("--secret-sauce")
+                if started:
+                    # Hand off to the elevated instance and close this
+                    # one. The elevated instance will unlock the tab
+                    # via --secret-sauce on startup.
+                    QApplication.quit()
+                else:
+                    # Elevation was declined or failed — keep the tab
+                    # locked so the content stays hidden.
+                    self.unlocked = False
+                    self.tabs.setCurrentIndex(self._fallback)
         finally:
             self._busy = False
+
+    def unlock_elevated(self) -> None:
+        """Unlock the tab after the elevated instance starts.
+
+        Called by main.py when it detects --secret-sauce in argv —
+        the app was relaunched as Administrator for this tab.
+        """
+        self.unlocked = True
+        self.tabs.setCurrentIndex(self.index)
 
     def lock(self) -> None:
         """Re-arm the gate, e.g. when the tab is hidden."""

@@ -356,6 +356,17 @@ def main():
             if callable(run_cmd):
                 run_cmd(_command_key)
 
+    # If this instance was relaunched as Administrator specifically
+    # for the SecretSauce tab, unlock the gate so the content is
+    # visible without re-entering the passphrase.
+    if "--secret-sauce" in args:
+        tabs = window.centralWidget()
+        if isinstance(tabs, QTabWidget):
+            gate = getattr(window, "secret_gate", None)
+            unlock = getattr(gate, "unlock_elevated", None)
+            if callable(unlock):
+                unlock()
+
     code = app.exec()
 
     # ---- Exit watchdog ----------------------------------------------------
