@@ -1,4 +1,8 @@
 # RootForgeKit
+-----
+<img width="1727" height="955" alt="gg" src="https://github.com/user-attachments/assets/e24fc95c-e6d9-453a-ae1a-c141590f69ec" />
+
+-----
 
 **A cross-platform system utility and diagnostics suite, in one dark-themed desktop app.**
 Windows · macOS · Linux — built with PySide6 (Qt 6).
